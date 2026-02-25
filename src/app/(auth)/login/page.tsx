@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Shield, Mail, Lock, Phone, Eye, EyeOff, Loader2, ArrowRight } from "lucide-react";
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { loginWithEmail, sendOTP, verifyOTP, loginWithGoogle, sendPasswordlessLink } from "@/features/auth/authHelpers";
+import { loginWithEmail, sendOTP, verifyOTP, loginWithGoogle, sendPasswordlessLink, getRedirectResult } from "@/features/auth/authHelpers";
 import { useRoleRedirect } from "@/hooks/useAuth";
 import type { ConfirmationResult } from "firebase/auth";
 import { RecaptchaVerifier } from "firebase/auth";
@@ -33,6 +33,24 @@ function LoginContent() {
     const [otp, setOtp] = useState("");
     const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
     const [otpSent, setOtpSent] = useState(false);
+
+    // ── Google Redirect Result handler ───────────────────────────────
+    // Must be BEFORE any early return to satisfy React hooks rules.
+    // When signInWithRedirect returns, Firebase lands back on /login and
+    // we call getRedirectResult() to finalize the token exchange.
+    useEffect(() => {
+        if (!auth) return;
+        getRedirectResult(auth).then((result) => {
+            if (result?.user) {
+                toast.success("Welcome back!");
+                // AuthProvider's onAuthStateChanged fires → useRoleRedirect navigates
+            }
+        }).catch((err: unknown) => {
+            const msg = err instanceof Error ? err.message : "Google sign-in failed";
+            if (msg.includes("popup-closed") || msg.includes("cancelled")) return;
+            toast.error(msg);
+        });
+    }, []);
 
     if (authLoading) return null; // redirect in progress
 
