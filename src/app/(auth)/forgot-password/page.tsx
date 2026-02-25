@@ -30,9 +30,7 @@ export default function ForgotPasswordPage() {
     return (
         <div className="w-full max-w-md space-y-6 relative z-10">
             <div className="text-center space-y-3">
-                <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[var(--civic-amber)] glow-amber mx-auto">
-                    <Shield className="w-7 h-7 text-[var(--navy-deep)]" />
-                </div>
+                <img src="/icons/icon-192x192.png" alt="JanMitra" className="w-14 h-14 mx-auto object-contain drop-shadow-[0_0_20px_rgba(245,158,11,0.4)]" />
                 <div>
                     <h1 className="text-3xl font-display font-bold tracking-tight">Reset password</h1>
                     <p className="text-muted-foreground text-sm mt-1">

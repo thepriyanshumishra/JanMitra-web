@@ -58,9 +58,7 @@ export default function LoginCallbackPage() {
 
     return (
         <div className="text-center space-y-4">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[var(--civic-amber)] glow-amber animate-pulse">
-                <Shield className="w-7 h-7 text-[var(--navy-deep)]" />
-            </div>
+            <img src="/icons/icon-192x192.png" alt="JanMitra" className="w-14 h-14 mx-auto object-contain drop-shadow-[0_0_20px_rgba(245,158,11,0.4)] animate-pulse" />
             <h1 className="text-xl font-bold font-display">Verifying your link...</h1>
             <div className="flex justify-center">
                 <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />

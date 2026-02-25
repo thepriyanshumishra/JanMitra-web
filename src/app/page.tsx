@@ -484,9 +484,7 @@ export default function HomePage() {
       <footer className="border-t border-border py-10 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-[var(--civic-amber)] flex items-center justify-center">
-              <Shield className="w-3 h-3 text-[var(--navy-deep)]" />
-            </div>
+            <img src="/icons/icon-192x192.png" alt="JanMitra" className="w-7 h-7 object-contain drop-shadow-[0_0_10px_rgba(245,158,11,0.2)]" />
             <span className="text-sm font-semibold">JanMitra</span>
             <span className="text-xs text-muted-foreground ml-2">— Making institutional failure visible since 2025</span>
           </div>

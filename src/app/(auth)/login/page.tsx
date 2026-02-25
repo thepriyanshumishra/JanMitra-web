@@ -43,9 +43,7 @@ function LoginContent() {
             <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-[var(--trust-green)]/4 rounded-full blur-[100px] pointer-events-none" />
             {/* Logo spinner */}
             <div className="relative">
-                <div className="w-16 h-16 rounded-2xl bg-[var(--civic-amber)] flex items-center justify-center glow-amber animate-pulse">
-                    <Shield className="w-8 h-8 text-[var(--navy-deep)]" />
-                </div>
+                <img src="/icons/icon-192x192.png" alt="JanMitra" className="w-16 h-16 object-contain drop-shadow-[0_0_20px_rgba(245,158,11,0.5)] animate-pulse" />
                 <div className="absolute -inset-2 rounded-[20px] border-2 border-[var(--civic-amber)]/30 animate-ping" />
             </div>
             <div className="text-center space-y-1">
@@ -153,9 +151,7 @@ function LoginContent() {
         <div className="w-full max-w-md space-y-6 relative z-10">
             {/* Logo */}
             <Link href="/" className="block text-center space-y-3 group">
-                <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[var(--civic-amber)] glow-amber mx-auto transition-transform group-hover:scale-105">
-                    <Shield className="w-7 h-7 text-[var(--navy-deep)]" />
-                </div>
+                <img src="/icons/icon-192x192.png" alt="JanMitra" className="w-12 h-12 mx-auto mb-6 object-contain drop-shadow-[0_0_20px_rgba(245,158,11,0.4)]" />
                 <div>
                     <h1 className="text-3xl font-display font-bold tracking-tight">Welcome back</h1>
                     <p className="text-muted-foreground text-sm mt-1">

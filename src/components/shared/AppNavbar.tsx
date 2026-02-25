@@ -85,9 +85,7 @@ export function AppNavbar() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
                 {/* Logo */}
                 <Link href={home} className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-[var(--civic-amber)] flex items-center justify-center glow-amber">
-                        <Shield className="w-4 h-4 text-[var(--navy-deep)]" />
-                    </div>
+                    <img src="/icons/icon-192x192.png" alt="JanMitra" className="w-9 h-9 drop-shadow-[0_0_12px_rgba(245,158,11,0.4)]" />
                     <span className="font-display text-lg font-bold tracking-tight">JanMitra</span>
                 </Link>
 

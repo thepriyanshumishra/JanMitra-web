@@ -63,9 +63,7 @@ export default function SignupPage() {
         <div className="w-full max-w-md space-y-6 relative z-10">
             {/* Logo */}
             <div className="text-center space-y-3">
-                <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[var(--civic-amber)] glow-amber mx-auto">
-                    <Shield className="w-7 h-7 text-[var(--navy-deep)]" />
-                </div>
+                <img src="/icons/icon-192x192.png" alt="JanMitra" className="w-14 h-14 mx-auto object-contain drop-shadow-[0_0_20px_rgba(245,158,11,0.4)]" />
                 <div>
                     <h1 className="text-3xl font-display font-bold tracking-tight">Create account</h1>
                     <p className="text-muted-foreground text-sm mt-1">
@@ -175,18 +173,18 @@ export default function SignupPage() {
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
                                 className={`pl-10 bg-white/5 border-white/10 focus:border-[var(--civic-amber)]/50 transition-colors ${confirmPassword && confirmPassword !== password
-                                        ? "border-[var(--accountability-red)]/50"
-                                        : confirmPassword && confirmPassword === password
-                                            ? "border-[var(--trust-green)]/50"
-                                            : ""
+                                    ? "border-[var(--accountability-red)]/50"
+                                    : confirmPassword && confirmPassword === password
+                                        ? "border-[var(--trust-green)]/50"
+                                        : ""
                                     }`}
                                 required
                             />
                             {confirmPassword && (
                                 <CheckCircle2
                                     className={`absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${confirmPassword === password
-                                            ? "text-[var(--trust-green)]"
-                                            : "text-[var(--accountability-red)]"
+                                        ? "text-[var(--trust-green)]"
+                                        : "text-[var(--accountability-red)]"
                                         }`}
                                 />
                             )}
@@ -199,8 +197,8 @@ export default function SignupPage() {
                             type="button"
                             onClick={() => setAgreed(!agreed)}
                             className={`mt-0.5 w-4 h-4 rounded border-2 shrink-0 transition-all flex items-center justify-center ${agreed
-                                    ? "bg-[var(--civic-amber)] border-[var(--civic-amber)]"
-                                    : "border-white/20 hover:border-white/40"
+                                ? "bg-[var(--civic-amber)] border-[var(--civic-amber)]"
+                                : "border-white/20 hover:border-white/40"
                                 }`}
                         >
                             {agreed && <CheckCircle2 className="w-3 h-3 text-[var(--navy-deep)]" />}
