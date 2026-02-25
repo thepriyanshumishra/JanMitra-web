@@ -12,38 +12,38 @@ const FROM_EMAIL = process.env.NOTIFY_FROM_EMAIL ?? "JanMitra <notifications@res
 type EventType = "SUBMITTED" | "ROUTED" | "STATUS_UPDATED" | "ESCALATED" | "PROOF_UPLOADED" | "CLOSED" | "DELAY_EXPLAINED";
 
 interface NotifyPayload {
-    to: string;
-    citizenName: string;
-    grievanceId: string;
-    eventType: EventType;
-    extra?: Record<string, string>;
+  to: string;
+  citizenName: string;
+  grievanceId: string;
+  eventType: EventType;
+  extra?: Record<string, string>;
 }
 
 const EVENT_SUBJECT: Record<EventType, string> = {
-    SUBMITTED: "✅ Your complaint has been received",
-    ROUTED: "📋 Your complaint has been routed",
-    STATUS_UPDATED: "🔄 Your complaint status was updated",
-    ESCALATED: "🚨 Your complaint has been escalated",
-    PROOF_UPLOADED: "📎 Officer uploaded resolution proof",
-    CLOSED: "🎉 Your complaint has been resolved",
-    DELAY_EXPLAINED: "⏳ Your complaint has a delay explanation",
+  SUBMITTED: "✅ Your complaint has been received",
+  ROUTED: "📋 Your complaint has been routed",
+  STATUS_UPDATED: "🔄 Your complaint status was updated",
+  ESCALATED: "🚨 Your complaint has been escalated",
+  PROOF_UPLOADED: "📎 Officer uploaded resolution proof",
+  CLOSED: "🎉 Your complaint has been resolved",
+  DELAY_EXPLAINED: "⏳ Your complaint has a delay explanation",
 };
 
 const EVENT_MESSAGE: Record<EventType, (extra?: Record<string, string>) => string> = {
-    SUBMITTED: () => "Your complaint has been successfully submitted and is being processed.",
-    ROUTED: () => "Your complaint has been routed to the responsible department and will be assigned soon.",
-    STATUS_UPDATED: (e) => `The status of your complaint has been updated to <strong>${e?.newStatus ?? "updated"}</strong>${e?.message ? `: "${e.message}"` : "."}`,
-    ESCALATED: () => "Your complaint has been <strong>escalated</strong> to senior authorities. You can expect a faster response.",
-    PROOF_UPLOADED: (e) => `The officer has uploaded resolution proof${e?.fileName ? ` (${e.fileName})` : ""}. Please verify and close if resolved.`,
-    CLOSED: () => "Your complaint has been marked as <strong>resolved</strong>. If the issue persists, you can reopen it within 7 days.",
-    DELAY_EXPLAINED: (e) => `The officer has explained the delay. Reason: <strong>${e?.delayReason ?? "unspecified"}</strong>${e?.details ? `<br/>${e.details}` : ""}`,
+  SUBMITTED: () => "Your complaint has been successfully submitted and is being processed.",
+  ROUTED: () => "Your complaint has been routed to the responsible department and will be assigned soon.",
+  STATUS_UPDATED: (e) => `The status of your complaint has been updated to <strong>${e?.newStatus ?? "updated"}</strong>${e?.message ? `: "${e.message}"` : "."}`,
+  ESCALATED: () => "Your complaint has been <strong>escalated</strong> to senior authorities. You can expect a faster response.",
+  PROOF_UPLOADED: (e) => `The officer has uploaded resolution proof${e?.fileName ? ` (${e.fileName})` : ""}. Please verify and close if resolved.`,
+  CLOSED: () => "Your complaint has been marked as <strong>resolved</strong>. If the issue persists, you can reopen it within 7 days.",
+  DELAY_EXPLAINED: (e) => `The officer has explained the delay. Reason: <strong>${e?.delayReason ?? "unspecified"}</strong>${e?.details ? `<br/>${e.details}` : ""}`,
 };
 
 function buildEmailHtml(name: string, grievanceId: string, eventType: EventType, extra?: Record<string, string>): string {
-    const message = EVENT_MESSAGE[eventType]?.(extra) ?? "Your complaint has been updated.";
-    const dashUrl = `https://janmitra.vercel.app/complaints/${grievanceId}`;
+  const message = EVENT_MESSAGE[eventType]?.(extra) ?? "Your complaint has been updated.";
+  const dashUrl = `https://janmitra.vercel.app/complaints/${grievanceId}`;
 
-    return `<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8" />
@@ -113,50 +113,79 @@ function buildEmailHtml(name: string, grievanceId: string, eventType: EventType,
 </html>`;
 }
 
+import { adminDb, adminMessaging, adminReady } from "@/lib/firebase-admin";
+
 export async function POST(request: NextRequest) {
-    if (!RESEND_API_KEY) {
-        // Graceful no-op: log and return success so callers don't break
-        console.log("[notify] RESEND_API_KEY not set — email notification skipped.");
-        return NextResponse.json({ ok: true, skipped: true });
-    }
+  let body: NotifyPayload;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
 
-    let body: NotifyPayload;
+  const { to, citizenName, grievanceId, eventType, extra } = body;
+  if (!to || !grievanceId || !eventType) {
+    return NextResponse.json({ error: "Missing required fields: to, grievanceId, eventType" }, { status: 400 });
+  }
+
+  const results: { email?: string; push?: string } = {};
+
+  // ── 1. Send Email (via Resend) ───────────────────────────────────
+  if (RESEND_API_KEY) {
     try {
-        body = await request.json();
-    } catch {
-        return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-    }
-
-    const { to, citizenName, grievanceId, eventType, extra } = body;
-    if (!to || !grievanceId || !eventType) {
-        return NextResponse.json({ error: "Missing required fields: to, grievanceId, eventType" }, { status: 400 });
-    }
-
-    try {
-        const html = buildEmailHtml(citizenName ?? "Citizen", grievanceId, eventType, extra);
-        const res = await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: {
-                Authorization: `Bearer ${RESEND_API_KEY}`,
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                from: FROM_EMAIL,
-                to: [to],
-                subject: `[JanMitra] ${EVENT_SUBJECT[eventType]} — ${grievanceId}`,
-                html,
-            }),
-        });
-
-        if (!res.ok) {
-            const errBody = await res.text();
-            console.error("[notify] Resend API error:", errBody);
-            return NextResponse.json({ error: "Email sending failed", details: errBody }, { status: 502 });
-        }
-
-        return NextResponse.json({ ok: true });
+      const html = buildEmailHtml(citizenName ?? "Citizen", grievanceId, eventType, extra);
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${RESEND_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: FROM_EMAIL,
+          to: [to],
+          subject: `[JanMitra] ${EVENT_SUBJECT[eventType]} — ${grievanceId}`,
+          html,
+        }),
+      });
+      results.email = res.ok ? "sent" : "failed";
     } catch (err) {
-        console.error("[notify] Unexpected error:", err);
-        return NextResponse.json({ error: "Internal error" }, { status: 500 });
+      console.error("[notify] Email failed:", err);
+      results.email = "error";
     }
+  } else {
+    results.email = "skipped_no_key";
+  }
+
+  // ── 2. Send Push Notification (via FCM) ───────────────────────
+  if (adminReady && adminMessaging && adminDb) {
+    try {
+      // Find user by email to get their FCM token
+      const userSnap = await adminDb.collection("users").where("email", "==", to).limit(1).get();
+      const fcmToken = !userSnap.empty ? userSnap.docs[0].data()?.fcmToken : null;
+
+      if (fcmToken) {
+        await adminMessaging.send({
+          token: fcmToken,
+          notification: {
+            title: `JanMitra: ${EVENT_SUBJECT[eventType].replace(/[✅📋🔄🚨🎉⏳]/g, "").trim()}`,
+            body: EVENT_MESSAGE[eventType](extra).replace(/<[^>]*>/g, ""), // strip HTML
+          },
+          data: {
+            grievanceId,
+            url: `/complaints/${grievanceId}`,
+          },
+        });
+        results.push = "sent";
+      } else {
+        results.push = "skipped_no_token";
+      }
+    } catch (err) {
+      console.error("[notify] Push failed:", err);
+      results.push = "error";
+    }
+  } else {
+    results.push = "skipped_admin_not_ready";
+  }
+
+  return NextResponse.json({ ok: true, results });
 }

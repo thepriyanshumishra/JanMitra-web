@@ -12,10 +12,12 @@
 import { getApps, initializeApp, cert, type App } from "firebase-admin/app";
 import { getAuth, type Auth } from "firebase-admin/auth";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
+import { getMessaging, type Messaging } from "firebase-admin/messaging";
 
 let adminApp: App;
 let adminAuth: Auth;
 let adminDb: Firestore;
+let adminMessaging: Messaging;
 
 /** True when the Admin SDK is fully initialised. */
 export let adminReady = false;
@@ -34,10 +36,11 @@ try {
             initializeApp({ credential: cert(serviceAccount) }, "admin");
         adminAuth = getAuth(adminApp);
         adminDb = getFirestore(adminApp);
+        adminMessaging = getMessaging(adminApp);
         adminReady = true;
     }
 } catch (err) {
     console.error("[firebase-admin] Initialisation failed:", err);
 }
 
-export { adminAuth, adminDb };
+export { adminAuth, adminDb, adminMessaging };

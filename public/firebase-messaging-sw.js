@@ -10,12 +10,12 @@ importScripts("https://www.gstatic.com/firebasejs/10.11.0/firebase-messaging-com
 // hardcoded here because service workers cannot read process.env.
 // Update these with your actual project values.
 const firebaseConfig = {
-    apiKey: self.__FIREBASE_CONFIG_API_KEY ?? "",
-    authDomain: self.__FIREBASE_CONFIG_AUTH_DOMAIN ?? "",
-    projectId: self.__FIREBASE_CONFIG_PROJECT_ID ?? "",
-    storageBucket: self.__FIREBASE_CONFIG_STORAGE_BUCKET ?? "",
-    messagingSenderId: self.__FIREBASE_CONFIG_MESSAGING_SENDER_ID ?? "",
-    appId: self.__FIREBASE_CONFIG_APP_ID ?? "",
+    apiKey: "AIzaSyDBTRcBsY-fH1uPT6z0WbWwaJTTrtT5Jzs",
+    authDomain: "janmitra-web.firebaseapp.com",
+    projectId: "janmitra-web",
+    storageBucket: "janmitra-web.firebasestorage.app",
+    messagingSenderId: "326420705263",
+    appId: "1:326420705263:web:357c52b1c25a69136ed01a",
 };
 
 firebase.initializeApp(firebaseConfig);
