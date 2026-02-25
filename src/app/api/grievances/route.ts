@@ -108,6 +108,27 @@ export async function POST(req: NextRequest) {
                 { merge: true }
             );
             await batch.commit();
+
+            // Fire-and-forget: send submission confirmation email
+            try {
+                const citizenDoc = await adminDb.collection("users").doc(citizenId).get();
+                const citizenData = citizenDoc.data();
+                if (citizenData?.email) {
+                    const base = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+                    fetch(`${base}/api/notify`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            to: citizenData.email,
+                            citizenName: citizenData.name ?? "Citizen",
+                            grievanceId,
+                            eventType: "SUBMITTED",
+                        }),
+                    }).catch(() => null);
+                }
+            } catch {
+                // non-critical — don't fail the request
+            }
         }
 
         return NextResponse.json({ success: true, grievanceId, grievanceData, slaDeadlineAt: slaDeadlineAt.toISOString() });

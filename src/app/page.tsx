@@ -3,13 +3,17 @@ import { Shield, ArrowRight, Eye, BarChart3, GitBranch, Users, ChevronRight, Zap
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
-// ─── Static data ──────────────────────────────────────────────────
-const stats = [
-  { label: "Complaints Traced", value: "1.2M+", note: "end-to-end visibility" },
-  { label: "Dept SLAs Monitored", value: "340+", note: "across 18 cities" },
-  { label: "Avg Resolution Speed", value: "3.2×", note: "faster than portals" },
-  { label: "Citizen Trust Index", value: "87%", note: "positive resolution rate" },
-];
+// ─── Real stats from API (with fallback) ─────────────────────────
+async function getPublicStats() {
+  try {
+    const base = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+    const res = await fetch(`${base}/api/public/stats`, { next: { revalidate: 300 } });
+    if (!res.ok) return null;
+    return res.json() as Promise<{ totalComplaints: number; resolvedOnTime: number; slaHonestyRate: number; departments: { id: string; name: string }[] }>;
+  } catch {
+    return null;
+  }
+}
 
 const features = [
   {
@@ -182,7 +186,31 @@ function ActivityFeed() {
 
 import { AppNavbar } from "@/components/shared/AppNavbar";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const apiStats = await getPublicStats();
+
+  const stats = [
+    {
+      label: "Complaints Traced",
+      value: apiStats ? apiStats.totalComplaints.toLocaleString("en-IN") : "0",
+      note: "end-to-end visibility",
+    },
+    {
+      label: "Dept SLAs Monitored",
+      value: apiStats ? `${apiStats.departments.length}` : "0",
+      note: "configured departments",
+    },
+    {
+      label: "Resolved On Time",
+      value: apiStats ? apiStats.resolvedOnTime.toLocaleString("en-IN") : "0",
+      note: "within SLA window",
+    },
+    {
+      label: "SLA Honesty Rate",
+      value: apiStats ? `${apiStats.slaHonestyRate}%` : "—",
+      note: "positive resolution rate",
+    },
+  ];
   return (
     <div className="min-h-screen bg-mesh text-foreground">
       <AppNavbar />

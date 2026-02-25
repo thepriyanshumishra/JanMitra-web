@@ -1,6 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { collection, query, where, orderBy, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import {
     FileText,
     Plus,
@@ -10,6 +13,7 @@ import {
     ArrowRight,
     Loader2,
     TrendingUp,
+    PenLine,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,74 +21,55 @@ import { Progress } from "@/components/ui/progress";
 import { useRequireAuth } from "@/hooks/useAuth";
 import type { SLAStatus } from "@/types";
 
-// ─── Mock data (replaced by API in Phase 3) ──────────────────────
-const MOCK_COMPLAINTS = [
-    {
-        id: "JM-2024-004821",
-        title: "Broken streetlight on MG Road for 3 weeks",
-        category: "Public Works",
-        status: "acknowledged" as const,
-        slaStatus: "at_risk" as SLAStatus,
-        slaPercent: 76,
-        department: "Municipal Corp.",
-        createdAt: "2024-01-18",
-        lastUpdate: "3 days ago",
-    },
-    {
-        id: "JM-2024-004790",
-        title: "Garbage not collected in Sector 14 for 5 days",
-        category: "Sanitation",
-        status: "escalated" as const,
-        slaStatus: "breached" as SLAStatus,
-        slaPercent: 100,
-        department: "Sanitation Dept.",
-        createdAt: "2024-01-15",
-        lastUpdate: "1 day ago",
-    },
-    {
-        id: "JM-2024-004612",
-        title: "Water supply disruption – Lane 7",
-        category: "Water Supply",
-        status: "closed" as const,
-        slaStatus: "on_track" as SLAStatus,
-        slaPercent: 60,
-        department: "Water Works",
-        createdAt: "2024-01-10",
-        lastUpdate: "5 days ago",
-    },
-];
+// ─── Types ────────────────────────────────────────────────────────
+interface Complaint {
+    id: string;
+    title: string;
+    category: string;
+    status: string;
+    slaStatus: SLAStatus;
+    slaDeadlineAt: string;
+    department?: string;
+    createdAt: string;
+    updatedAt: string;
+}
 
+// ─── Helpers ──────────────────────────────────────────────────────
+function getSlaPercent(slaDeadlineAt: string): number {
+    const deadline = new Date(slaDeadlineAt).getTime();
+    const sevenDays = 7 * 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const created = deadline - sevenDays;
+    const elapsed = now - created;
+    return Math.min(Math.round((elapsed / sevenDays) * 100), 100);
+}
+
+function timeAgo(iso: string): string {
+    const ms = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(ms / 60000);
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
+}
+
+// ─── SLA badge config ─────────────────────────────────────────────
 const SLA_BADGE: Record<SLAStatus, { label: string; className: string; icon: React.ReactNode }> = {
-    on_track: {
-        label: "On Track",
-        className: "sla-on-track",
-        icon: <CheckCircle2 className="w-3 h-3" />,
-    },
-    at_risk: {
-        label: "At Risk",
-        className: "sla-at-risk",
-        icon: <Clock className="w-3 h-3" />,
-    },
-    breached: {
-        label: "SLA Breached",
-        className: "sla-breached",
-        icon: <AlertTriangle className="w-3 h-3" />,
-    },
+    on_track: { label: "On Track", className: "sla-on-track", icon: <CheckCircle2 className="w-3 h-3" /> },
+    at_risk: { label: "At Risk", className: "sla-at-risk", icon: <Clock className="w-3 h-3" /> },
+    breached: { label: "SLA Breached", className: "sla-breached", icon: <AlertTriangle className="w-3 h-3" /> },
 };
 
 const STATUS_LABEL: Record<string, string> = {
-    submitted: "Submitted",
-    routed: "Routed",
-    assigned: "Assigned",
-    acknowledged: "Acknowledged",
-    in_progress: "In Progress",
-    escalated: "Escalated",
-    closed: "Resolved",
-    reopened: "Reopened",
+    submitted: "Submitted", routed: "Routed", assigned: "Assigned",
+    acknowledged: "Acknowledged", in_progress: "In Progress",
+    escalated: "Escalated", closed: "Resolved", reopened: "Reopened",
 };
 
-function ComplaintCard({ complaint }: { complaint: (typeof MOCK_COMPLAINTS)[0] }) {
-    const sla = SLA_BADGE[complaint.slaStatus];
+// ─── Card ─────────────────────────────────────────────────────────
+function ComplaintCard({ complaint }: { complaint: Complaint }) {
+    const sla = SLA_BADGE[complaint.slaStatus] ?? SLA_BADGE.on_track;
+    const slaPercent = getSlaPercent(complaint.slaDeadlineAt);
     const isBreached = complaint.slaStatus === "breached";
 
     return (
@@ -94,7 +79,7 @@ function ComplaintCard({ complaint }: { complaint: (typeof MOCK_COMPLAINTS)[0] }
         >
             <div className="flex items-start justify-between gap-4 mb-3">
                 <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <span className="text-xs font-mono text-muted-foreground">{complaint.id}</span>
                         <Badge variant="outline" className="text-[10px] border-white/10 text-muted-foreground">
                             {complaint.category}
@@ -108,58 +93,66 @@ function ComplaintCard({ complaint }: { complaint: (typeof MOCK_COMPLAINTS)[0] }
             </div>
 
             <div className="flex items-center gap-3 mb-3 flex-wrap">
-                <span
-                    className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${sla.className}`}
-                >
-                    {sla.icon}
-                    {sla.label}
+                <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${sla.className}`}>
+                    {sla.icon} {sla.label}
                 </span>
-                <Badge
-                    variant="secondary"
-                    className="text-[10px] bg-white/5 text-muted-foreground border-0"
-                >
+                <Badge variant="secondary" className="text-[10px] bg-white/5 text-muted-foreground border-0">
                     {STATUS_LABEL[complaint.status] ?? complaint.status}
                 </Badge>
-                <span className="text-xs text-muted-foreground ml-auto">{complaint.department}</span>
+                {complaint.department && (
+                    <span className="text-xs text-muted-foreground ml-auto">{complaint.department}</span>
+                )}
             </div>
 
-            {/* SLA bar */}
             {complaint.status !== "closed" && (
                 <div className="space-y-1">
                     <div className="flex justify-between text-[10px] text-muted-foreground">
                         <span>SLA Usage</span>
-                        <span className={isBreached ? "text-[var(--accountability-red)]" : ""}>
-                            {complaint.slaPercent}%
-                        </span>
+                        <span className={isBreached ? "text-[var(--accountability-red)]" : ""}>{slaPercent}%</span>
                     </div>
                     <Progress
-                        value={Math.min(complaint.slaPercent, 100)}
+                        value={Math.min(slaPercent, 100)}
                         className="h-1.5 bg-white/10"
-                        style={
-                            {
-                                "--progress-indicator-color":
-                                    complaint.slaStatus === "on_track"
-                                        ? "var(--trust-green)"
-                                        : complaint.slaStatus === "at_risk"
-                                            ? "var(--warning-yellow)"
-                                            : "var(--accountability-red)",
-                            } as React.CSSProperties
-                        }
+                        style={{
+                            "--progress-indicator-color":
+                                complaint.slaStatus === "on_track"
+                                    ? "var(--trust-green)"
+                                    : complaint.slaStatus === "at_risk"
+                                        ? "var(--warning-yellow)"
+                                        : "var(--accountability-red)",
+                        } as React.CSSProperties}
                     />
                 </div>
             )}
 
             <div className="mt-2 text-[10px] text-muted-foreground">
-                Last update: {complaint.lastUpdate}
+                Last update: {timeAgo(complaint.updatedAt)}
             </div>
         </Link>
     );
 }
 
+// ─── Page ─────────────────────────────────────────────────────────
 export default function CitizenDashboard() {
-    const { user, loading } = useRequireAuth();
+    const { user, loading: authLoading } = useRequireAuth();
+    const [complaints, setComplaints] = useState<Complaint[]>([]);
+    const [dataLoading, setDataLoading] = useState(true);
 
-    if (loading) {
+    useEffect(() => {
+        if (!user?.id || !db) return;
+        const q = query(
+            collection(db, "grievances"),
+            where("citizenId", "==", user.id),
+            orderBy("createdAt", "desc")
+        );
+        const unsub = onSnapshot(q, (snap) => {
+            setComplaints(snap.docs.map(d => ({ id: d.id, ...d.data() } as Complaint)));
+            setDataLoading(false);
+        }, () => setDataLoading(false));
+        return () => unsub();
+    }, [user?.id]);
+
+    if (authLoading || !user) {
         return (
             <div className="min-h-[80vh] flex items-center justify-center">
                 <Loader2 className="w-6 h-6 animate-spin text-[var(--civic-amber)]" />
@@ -167,11 +160,9 @@ export default function CitizenDashboard() {
         );
     }
 
-    if (!user) return null;
-
-    const activeCount = MOCK_COMPLAINTS.filter((c) => c.status !== "closed").length;
-    const breachedCount = MOCK_COMPLAINTS.filter((c) => c.slaStatus === "breached").length;
-    const resolvedCount = MOCK_COMPLAINTS.filter((c) => c.status === "closed").length;
+    const activeCount = complaints.filter(c => c.status !== "closed").length;
+    const breachedCount = complaints.filter(c => c.slaStatus === "breached").length;
+    const resolvedCount = complaints.filter(c => c.status === "closed").length;
 
     return (
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-8">
@@ -182,7 +173,7 @@ export default function CitizenDashboard() {
                         Welcome back, {user.name?.split(" ")[0]} 👋
                     </h1>
                     <p className="text-muted-foreground text-sm mt-0.5">
-                        Here&apos;s the status of your complaints
+                        {"Here's the status of your complaints"}
                     </p>
                 </div>
                 <Link href="/submit">
@@ -198,21 +189,21 @@ export default function CitizenDashboard() {
                 {[
                     {
                         label: "Active",
-                        value: activeCount,
+                        value: dataLoading ? "—" : activeCount,
                         icon: <FileText className="w-4 h-4" />,
                         color: "text-[var(--civic-amber)]",
                         bg: "bg-[var(--civic-amber-muted)]",
                     },
                     {
                         label: "SLA Breached",
-                        value: breachedCount,
+                        value: dataLoading ? "—" : breachedCount,
                         icon: <AlertTriangle className="w-4 h-4" />,
                         color: "text-[var(--accountability-red)]",
                         bg: "bg-[var(--accountability-red-muted)]",
                     },
                     {
                         label: "Resolved",
-                        value: resolvedCount,
+                        value: dataLoading ? "—" : resolvedCount,
                         icon: <TrendingUp className="w-4 h-4" />,
                         color: "text-[var(--trust-green)]",
                         bg: "bg-[var(--trust-green-muted)]",
@@ -234,19 +225,42 @@ export default function CitizenDashboard() {
             <div className="space-y-4">
                 <div className="flex items-center justify-between">
                     <h2 className="text-base font-display font-semibold">Your Complaints</h2>
-                    <Link
-                        href="/complaints"
-                        className="text-xs text-[var(--civic-amber)] hover:underline flex items-center gap-1"
-                    >
+                    <Link href="/complaints" className="text-xs text-[var(--civic-amber)] hover:underline flex items-center gap-1">
                         View all <ArrowRight className="w-3 h-3" />
                     </Link>
                 </div>
 
-                <div className="space-y-3">
-                    {MOCK_COMPLAINTS.map((c) => (
-                        <ComplaintCard key={c.id} complaint={c} />
-                    ))}
-                </div>
+                {dataLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                        <Loader2 className="w-5 h-5 animate-spin text-[var(--civic-amber)]" />
+                    </div>
+                ) : complaints.length === 0 ? (
+                    <div className="glass rounded-xl p-10 text-center space-y-4">
+                        <PenLine className="w-10 h-10 mx-auto text-[var(--civic-amber)] opacity-40" />
+                        <div>
+                            <p className="text-sm font-semibold">No complaints filed yet</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                File your first complaint to get started — it takes less than 2 minutes.
+                            </p>
+                        </div>
+                        <Link href="/submit">
+                            <Button className="bg-[var(--civic-amber)] text-[var(--navy-deep)] font-bold gap-2 mt-2">
+                                <Plus className="w-4 h-4" /> File a Complaint
+                            </Button>
+                        </Link>
+                    </div>
+                ) : (
+                    <div className="space-y-3">
+                        {complaints.slice(0, 10).map((c) => (
+                            <ComplaintCard key={c.id} complaint={c} />
+                        ))}
+                        {complaints.length > 10 && (
+                            <Link href="/complaints" className="block text-center text-xs text-[var(--civic-amber)] hover:underline pt-1">
+                                View all {complaints.length} complaints →
+                            </Link>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Transparency nudge */}

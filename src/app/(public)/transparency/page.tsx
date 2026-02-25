@@ -38,15 +38,36 @@ interface Grievance {
     createdAt: string;
 }
 
-const CATEGORY_COLORS = ["#f59e0b", "#3b82f6", "#10b981", "#8b5cf6", "#ef4444", "#06b6d4"];
+interface DeptStat {
+    id: string;
+    name: string;
+    slaScore?: number;       // 0-100
+    totalComplaints?: number;
+    resolvedOnTime?: number;
+}
 
-const DEPT_DATA = [
-    { name: "Water Supply", score: 92, trend: "+4%", icon: "💧" },
-    { name: "Electricity", score: 88, trend: "+1%", icon: "⚡" },
-    { name: "Sanitation", score: 76, trend: "-2%", icon: "🧹" },
-    { name: "Roads & Traffic", score: 54, trend: "+8%", icon: "🛣️" },
-    { name: "Public Parks", score: 42, trend: "-3%", icon: "🌳" },
-];
+interface PublicStats {
+    totalComplaints: number;
+    resolvedOnTime: number;
+    slaHonestyRate: number;
+    departments: DeptStat[];
+}
+
+const DEPT_ICONS: Record<string, string> = {
+    water: "💧", electricity: "⚡", sanitation: "🧹",
+    roads: "🛣️", parks: "🌳", health: "🏥",
+    education: "📚", transport: "🚌", default: "🏛️",
+};
+
+function getDeptIcon(name: string): string {
+    const lower = name.toLowerCase();
+    for (const [key, icon] of Object.entries(DEPT_ICONS)) {
+        if (lower.includes(key)) return icon;
+    }
+    return DEPT_ICONS.default;
+}
+
+const CATEGORY_COLORS = ["#f59e0b", "#3b82f6", "#10b981", "#8b5cf6", "#ef4444", "#06b6d4"];
 
 const tooltipStyle = {
     backgroundColor: "hsl(230 25% 10%)",
@@ -60,6 +81,7 @@ const tooltipStyle = {
 export default function TransparencyDashboard() {
     const [complaints, setComplaints] = useState<Grievance[]>([]);
     const [loading, setLoading] = useState(() => db ? true : false);
+    const [publicStats, setPublicStats] = useState<PublicStats | null>(null);
 
     useEffect(() => {
         if (!db) return;
@@ -68,6 +90,13 @@ export default function TransparencyDashboard() {
             setComplaints(snap.docs.map(d => ({ id: d.id, ...d.data() } as Grievance)));
             setLoading(false);
         });
+    }, []);
+
+    useEffect(() => {
+        fetch("/api/public/stats")
+            .then(r => r.ok ? r.json() : null)
+            .then(data => { if (data) setPublicStats(data); })
+            .catch(() => null);
     }, []);
 
     if (loading) return (
@@ -166,9 +195,9 @@ export default function TransparencyDashboard() {
                             bg: "bg-red-500/10",
                         },
                         {
-                            label: "Avg Response",
-                            value: "3.2 days",
-                            sub: "30-day average",
+                            label: "SLA Honesty Rate",
+                            value: publicStats ? `${publicStats.slaHonestyRate}%` : `${resolutionRate}%`,
+                            sub: publicStats ? `${publicStats.resolvedOnTime} resolved on time` : `${resolved} resolved`,
                             icon: <Clock className="w-5 h-5" />,
                             color: "text-purple-400",
                             bg: "bg-purple-500/10",
@@ -290,34 +319,37 @@ export default function TransparencyDashboard() {
                         <p className="text-xs text-muted-foreground mb-6">Ranked by SLA honesty score</p>
 
                         <div className="space-y-3 flex-1">
-                            {DEPT_DATA.map((dept, i) => {
+                            {(publicStats?.departments ?? []).length === 0 ? (
+                                <div className="flex-1 flex items-center justify-center py-8 text-sm text-muted-foreground">
+                                    No department data yet.
+                                </div>
+                            ) : (publicStats?.departments ?? []).map((dept, i) => {
+                                const score = dept.slaScore ?? (
+                                    dept.totalComplaints && dept.totalComplaints > 0
+                                        ? Math.round(((dept.resolvedOnTime ?? 0) / dept.totalComplaints) * 100)
+                                        : 0
+                                );
                                 const rankColors = [
                                     "bg-yellow-400/15 text-yellow-400 border-yellow-400/20",
                                     "bg-slate-300/10 text-slate-300 border-slate-300/20",
                                     "bg-amber-700/15 text-amber-600 border-amber-600/20",
                                 ];
-                                const barColor = dept.score >= 80 ? "var(--trust-green)" : dept.score >= 60 ? "#f59e0b" : "var(--accountability-red)";
-                                const trendPositive = dept.trend.startsWith("+");
+                                const barColor = score >= 80 ? "var(--trust-green)" : score >= 60 ? "#f59e0b" : "var(--accountability-red)";
 
                                 return (
-                                    <div key={dept.name} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/5 transition-colors group">
+                                    <div key={dept.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/5 transition-colors group">
                                         <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold border shrink-0 ${rankColors[i] ?? "bg-white/5 text-muted-foreground border-white/10"}`}>
-                                            {dept.icon}
+                                            {getDeptIcon(dept.name)}
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center justify-between mb-1.5">
                                                 <p className="text-sm font-semibold truncate">{dept.name}</p>
-                                                <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                                                    <span className="text-sm font-black font-mono">{dept.score}%</span>
-                                                    <span className={`text-[9px] font-bold ${trendPositive ? "text-green-400" : "text-red-400"}`}>
-                                                        {dept.trend}
-                                                    </span>
-                                                </div>
+                                                <span className="text-sm font-black font-mono shrink-0 ml-2">{score}%</span>
                                             </div>
                                             <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
                                                 <div
                                                     className="h-full rounded-full transition-all duration-1000"
-                                                    style={{ width: `${dept.score}%`, backgroundColor: barColor }}
+                                                    style={{ width: `${score}%`, backgroundColor: barColor }}
                                                 />
                                             </div>
                                         </div>

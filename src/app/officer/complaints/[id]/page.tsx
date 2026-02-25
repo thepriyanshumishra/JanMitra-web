@@ -112,6 +112,9 @@ export default function OfficerComplaintPage() {
             await updateDoc(doc(db, "grievances", grievance.id), update);
             toast.success(`Action recorded: ${type.replace(/_/g, " ")}`);
             setMessage("");
+
+            // Fire-and-forget email notification
+            sendNotify(type, grievance.citizenId, grievance.id, { newStatus, ...(message ? { message } : {}), ...extra });
         } catch (err) {
             console.error(err);
             toast.error("Action failed. Please try again.");
@@ -119,6 +122,31 @@ export default function OfficerComplaintPage() {
             setActionLoading(false);
         }
     }
+
+    /** Fire-and-forget: look up citizen email then call /api/notify */
+    async function sendNotify(eventType: string, citizenId: string, grievanceId: string, extra?: Record<string, string>) {
+        try {
+            const { getDoc, doc: fsDoc } = await import("firebase/firestore");
+            if (!db) return;
+            const citizenSnap = await getDoc(fsDoc(db, "users", citizenId));
+            const citizenData = citizenSnap.data();
+            if (!citizenData?.email) return;
+            await fetch("/api/notify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    to: citizenData.email,
+                    citizenName: citizenData.name ?? "Citizen",
+                    grievanceId,
+                    eventType: eventType as string,
+                    extra,
+                }),
+            });
+        } catch {
+            // silently ignore — notifications are non-critical
+        }
+    }
+
 
     async function handleUploadProof() {
         if (!db || !grievance || !user || !proofFile) return;
