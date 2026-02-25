@@ -34,7 +34,26 @@ function LoginContent() {
     const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
     const [otpSent, setOtpSent] = useState(false);
 
-    if (authLoading) return null; // redirect in progress
+    // Show loading overlay while Firebase auth resolves.
+    // This prevents the Google OAuth redirect from flashing the login form.
+    if (authLoading) return (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-mesh gap-6">
+            {/* Background orbs */}
+            <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-[var(--civic-amber)]/5 rounded-full blur-[120px] pointer-events-none" />
+            <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-[var(--trust-green)]/4 rounded-full blur-[100px] pointer-events-none" />
+            {/* Logo spinner */}
+            <div className="relative">
+                <div className="w-16 h-16 rounded-2xl bg-[var(--civic-amber)] flex items-center justify-center glow-amber animate-pulse">
+                    <Shield className="w-8 h-8 text-[var(--navy-deep)]" />
+                </div>
+                <div className="absolute -inset-2 rounded-[20px] border-2 border-[var(--civic-amber)]/30 animate-ping" />
+            </div>
+            <div className="text-center space-y-1">
+                <p className="text-sm font-semibold text-foreground">Signing you in…</p>
+                <p className="text-xs text-muted-foreground">Setting up your JanMitra account</p>
+            </div>
+        </div>
+    );
 
     // ── Email Login ──────────────────────────────────────────────
     async function handleEmailLogin(e: React.FormEvent) {

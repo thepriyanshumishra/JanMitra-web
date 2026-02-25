@@ -82,14 +82,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const unsub = onAuthStateChanged(auth, async (fbUser) => {
             setFirebaseUser(fbUser);
             if (fbUser) {
-                // Post session cookie
-                const idToken = await fbUser.getIdToken();
-                await fetch("/api/auth/session", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ idToken }),
-                }).catch(() => { });
+                // Post session cookie (fire-and-forget)
+                fbUser.getIdToken().then((idToken) => {
+                    fetch("/api/auth/session", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ idToken }),
+                    }).catch(() => { });
+                });
 
+                // ⚠️ Do NOT set loading=false until AFTER profile loads
+                // This prevents the login page from flashing before redirect
                 const profile = await fetchUserProfile(fbUser);
                 setUser(profile);
             } else {
@@ -97,6 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 // Clear session
                 await fetch("/api/auth/session", { method: "DELETE" }).catch(() => { });
             }
+            // Only mark loading done once everything is resolved
             setLoading(false);
         });
         return unsub;
