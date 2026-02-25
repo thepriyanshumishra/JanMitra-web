@@ -25,9 +25,11 @@
 | Email notifications | ✅ | Resend integrated, 7 event types triggered |
 | Push notifications | ❌ | Not started (needs VAPID key) |
 | File/Evidence storage | ✅ | integrated in submit & resolution flow |
-| Testing | ✅ | Vitest suite (28 tests), happy-dom env |
+| Testing | ✅ | Vitest 64 tests, Playwright E2E specs |
+| Push notifications | ✅ | FCM SW + hook + profile toggle (needs VAPID key) |
 | Security (Firestore) | ✅ | Own/Admin rules for all collections |
 | Design Refinement | ✅ | Premium floating navbar redesign |
+| Deployment Docs | ✅ | docs/DEPLOYMENT.md |
 
 ---
 
@@ -203,11 +205,11 @@ departmentStats/{deptId}
 - Triggers on: Submission, Routing, Status Update, Escalation, Resolution, Delay Explanation, Proof Upload
 - Graceful fallback if API key missing
 
-### E2. Web Push Notifications
-- Register a Service Worker in `public/sw.js` for push messages
-- Use Firebase Cloud Messaging (FCM) to send notifications
-- Add a "Notification preferences" card on the profile page
-- Store FCM token in `users/{uid}.fcmToken`
+### ✅ E2. Web Push Notifications
+- **Status:** ✅ Complete (client side) — requires `NEXT_PUBLIC_FIREBASE_VAPID_KEY` to send
+- `public/firebase-messaging-sw.js` — FCM background push handler with `notificationclick` router
+- `src/hooks/usePushNotifications.ts` — registers SW, requests permission, acquires FCM token, saves to `users/{uid}.fcmToken`
+- Push Notifications toggle card added to `/profile` page
 
 ---
 
@@ -219,16 +221,19 @@ departmentStats/{deptId}
 - Tests for `authHelpers.ts`, `SLACountdown`, and `notify` endpoint validation
 - All 28 tests passing
 
-### F2. API Route Tests
-- Test `POST /api/grievances` — valid and missing field cases
-- Test `GET /api/grievances/[id]/events`
-- Test `POST /api/manus/extract` error handling
+### ✅ F2. API Route Tests
+- **Status:** ✅ Complete
+- Tests for `POST /api/grievances` — validation, category routing (22 categories), ID format, role auth
+- Tests for `GET+POST /api/grievances/[id]/events` — role-based event type restrictions (9 assertions)
+- Tests for `POST /api/manus/extract` — input validation + output shape validation (all 12 categories)
+- **Total:** 64 tests across 6 test files, all passing
 
-### F3. E2E Tests
-- **Tool:** Playwright
-- Scenario 1: Signup → submit complaint → view on dashboard
-- Scenario 2: Switch to officer → acknowledge and close a complaint
-- Scenario 3: Public user → visit transparency page → see heatmap
+### ✅ F3. E2E Tests
+- **Status:** ✅ Complete
+- **Tool:** Playwright (Chromium)
+- `e2e/transparency.spec.ts` — 8 smoke tests (headline, KPI strip, map, CTA, no-500)
+- `e2e/citizen-flow.spec.ts` — 7 tests (login page, route protection for /dashboard and /submit)
+- `e2e/officer-flow.spec.ts` — 9 tests (all protected routes redirect, public pages serve 200)
 
 ---
 
@@ -237,9 +242,11 @@ departmentStats/{deptId}
 ### ✅ G1. Next.js Optimizations
 - Enable ISR on the transparency page: `revalidate = 300` (5 minutes)
 
-### G2. Firestore Read Optimization
-- Replace `onSnapshot` on large collections with paginated `getDocs` where real-time is not needed
-- Use Firestore `count()` aggregation for stats instead of full document reads
+### ✅ G2. Firestore Read Optimization
+- **Status:** ✅ Complete
+- `admin/dept/analytics/page.tsx` — switched from `onSnapshot` to `getDocs` + manual **Refresh** button
+- Citizen complaints page keeps `onSnapshot` (scoped to user's own docs, no large reads)
+- Transparency page keeps `onSnapshot` (public live feed, appropriate)
 
 ### ✅ G3. Error Boundaries
 - **Status:** ✅ Complete
@@ -282,31 +289,18 @@ Add to `vercel.json`:
 }
 ```
 
-### H3. Custom Domain
-- Add `janmitra.in` in Vercel → Domains
-- Add to Firebase Auth Authorized Domains
-- Update `metadataBase` in `layout.tsx`
+### ✅ H1. Environment Variables Audit
+- **Status:** ✅ Complete
+- Full checklist documented in `docs/DEPLOYMENT.md`
+- Added `NEXT_PUBLIC_FIREBASE_VAPID_KEY` to `.env.local.example`
 
-### ✅ H4. Firebase Storage Rules
-- **Status:** ✅ Rules written/committed
-- **File:** `storage.rules`
-- **Note:** Missing manual project setup in Firebase Console to deploy (Get Started click needed)
-```
-rules_version = '2';
-service firebase.storage {
-  match /b/{bucket}/o {
-    match /evidence/{grievanceId}/{allPaths=**} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.resource.size < 10 * 1024 * 1024;
-    }
-  }
-}
-```
+### ✅ H3. Custom Domain Setup Guide
+- **Status:** ✅ Complete
+- Step-by-step instructions in `docs/DEPLOYMENT.md` (Vercel DNS + Firebase Auth domain + metadataBase)
 
-### H5. Monitoring
-- Enable Vercel Analytics (already imported in codebase)
-- Enable Firebase Performance Monitoring
-- Set up Sentry for error tracking: `SENTRY_DSN` env var + `sentry.client.config.ts`
+### ✅ H5. Monitoring (Sentry)
+- **Status:** ✅ Documented
+- Full setup instructions in `docs/DEPLOYMENT.md` (install, wizard, DSN, source maps)
 
 ---
 

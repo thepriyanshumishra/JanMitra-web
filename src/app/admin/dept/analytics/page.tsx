@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { collection, query, onSnapshot, where } from "firebase/firestore";
+import { useEffect, useState, useCallback } from "react";
+import { collection, query, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Loader2, TrendingUp, TrendingDown, AlertTriangle, Clock, CheckCircle2 } from "lucide-react";
 import {
@@ -48,15 +48,23 @@ function StatCard({
 export default function DeptAdminAnalyticsPage() {
     const [grievances, setGrievances] = useState<Grievance[]>([]);
     const [loading, setLoading] = useState(true);
+    const [lastRefreshed, setLastRefreshed] = useState<string>("");
+
+    const fetchData = useCallback(async () => {
+        if (!db) return;
+        setLoading(true);
+        try {
+            const snap = await getDocs(query(collection(db, "grievances")));
+            setGrievances(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Grievance)));
+            setLastRefreshed(new Date().toLocaleTimeString());
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     useEffect(() => {
-        if (!db) return;
-        const q = query(collection(db, "grievances"));
-        return onSnapshot(q, (snap) => {
-            setGrievances(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Grievance)));
-            setLoading(false);
-        });
-    }, []);
+        fetchData();
+    }, [fetchData]);
 
     if (loading) return (
         <div className="min-h-[80vh] flex items-center justify-center">
@@ -119,11 +127,22 @@ export default function DeptAdminAnalyticsPage() {
 
     return (
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8">
-            <div>
-                <h1 className="text-2xl font-display font-bold">Department Analytics</h1>
-                <p className="text-muted-foreground text-sm mt-0.5">
-                    Real-time overview of complaint performance and SLA health
-                </p>
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl font-display font-bold">Department Analytics</h1>
+                    <p className="text-muted-foreground text-sm mt-0.5">
+                        Complaint performance and SLA health snapshot
+                        {lastRefreshed && <span className="ml-2 text-[10px] text-muted-foreground/50">· refreshed {lastRefreshed}</span>}
+                    </p>
+                </div>
+                <button
+                    onClick={fetchData}
+                    disabled={loading}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-xl glass border border-white/10 text-muted-foreground hover:text-white transition-colors disabled:opacity-50"
+                >
+                    <TrendingUp className="w-3.5 h-3.5" />
+                    Refresh
+                </button>
             </div>
 
             {/* Stats */}

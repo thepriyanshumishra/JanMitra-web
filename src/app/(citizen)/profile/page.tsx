@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { User, Mail, Phone, Shield, Save, Loader2, BarChart2, CheckCircle2, AlertTriangle, Trash2 } from "lucide-react";
+import { User, Mail, Phone, Shield, Save, Loader2, BarChart2, CheckCircle2, AlertTriangle, Trash2, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,7 @@ import { doc, updateDoc, collection, query, where, getDocs } from "firebase/fire
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useRequireAuth } from "@/hooks/useAuth";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 import type { UserRole } from "@/types";
 
 const ROLE_COLOR: Record<UserRole, string> = {
@@ -39,6 +40,7 @@ interface ComplaintStats {
 export default function ProfilePage() {
     const { user, refreshUser } = useAuth();
     const { loading } = useRequireAuth();
+    const push = usePushNotifications();
     const [name, setName] = useState(user?.name ?? "");
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
@@ -233,6 +235,40 @@ export default function ProfilePage() {
                     If you believe your role is incorrect, contact your department administrator.
                 </p>
             </div>
+
+            {/* Push Notifications */}
+            {push.supported && (
+                <div className="glass rounded-2xl p-5 border border-white/5 space-y-3">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                                <Bell className="w-4 h-4 text-purple-400" />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-bold">Push Notifications</h3>
+                                <p className="text-xs text-muted-foreground">
+                                    {push.enabled ? "Receive alerts on this device" : "Enable complaint status alerts"}
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={push.toggle}
+                            disabled={push.loading}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${push.enabled ? "bg-purple-500" : "bg-white/10"
+                                } disabled:opacity-50`}
+                            aria-label={push.enabled ? "Disable push notifications" : "Enable push notifications"}
+                        >
+                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${push.enabled ? "translate-x-6" : "translate-x-1"
+                                }`} />
+                        </button>
+                    </div>
+                    {push.enabled && (
+                        <p className="text-[10px] text-muted-foreground pl-12">
+                            You&apos;ll receive alerts when your complaint status changes, escalates, or is resolved.
+                        </p>
+                    )}
+                </div>
+            )}
 
             {/* Danger zone */}
             <div className="glass rounded-2xl p-5 border border-[var(--accountability-red)]/20 space-y-3">
