@@ -1,26 +1,315 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
+/* ─── JanMitra Design Tokens ─── */
 @theme inline {
+  /* Fonts */
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-clash);
+  --font-mono: var(--font-geist-mono);
+
+  /* Tailwind color bridge */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* JanMitra Brand Colors */
+  --color-civic-amber: var(--civic-amber);
+  --color-civic-amber-muted: var(--civic-amber-muted);
+  --color-trust-green: var(--trust-green);
+  --color-trust-green-muted: var(--trust-green-muted);
+  --color-accountability-red: var(--accountability-red);
+  --color-accountability-red-muted: var(--accountability-red-muted);
+  --color-warning-yellow: var(--warning-yellow);
+  --color-warning-yellow-muted: var(--warning-yellow-muted);
+  --color-navy-deep: var(--navy-deep);
+  --color-navy-mid: var(--navy-mid);
+  --color-navy-light: var(--navy-light);
+  --color-glass: var(--glass);
+  --color-glass-border: var(--glass-border);
+
+  /* Chart colors */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* Radius scale */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ─── Light Mode (fallback) ─── */
+:root {
+  --radius: 0.75rem;
+  --background: oklch(0.97 0.003 240);
+  --foreground: oklch(0.15 0.02 240);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.15 0.02 240);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.15 0.02 240);
+  --primary: oklch(0.65 0.18 60);        /* civic amber */
+  --primary-foreground: oklch(0.1 0 0);
+  --secondary: oklch(0.92 0.005 240);
+  --secondary-foreground: oklch(0.2 0.02 240);
+  --muted: oklch(0.94 0.003 240);
+  --muted-foreground: oklch(0.52 0.02 240);
+  --accent: oklch(0.94 0.005 240);
+  --accent-foreground: oklch(0.2 0.02 240);
+  --destructive: oklch(0.58 0.24 27);
+  --border: oklch(0.89 0.007 240);
+  --input: oklch(0.89 0.007 240);
+  --ring: oklch(0.65 0.18 60);
+
+  /* JanMitra Brand */
+  --civic-amber: oklch(0.72 0.2 60);
+  --civic-amber-muted: oklch(0.72 0.2 60 / 15%);
+  --trust-green: oklch(0.68 0.18 155);
+  --trust-green-muted: oklch(0.68 0.18 155 / 15%);
+  --accountability-red: oklch(0.62 0.22 27);
+  --accountability-red-muted: oklch(0.62 0.22 27 / 15%);
+  --warning-yellow: oklch(0.82 0.2 95);
+  --warning-yellow-muted: oklch(0.82 0.2 95 / 15%);
+  --navy-deep: oklch(0.18 0.04 240);
+  --navy-mid: oklch(0.25 0.04 240);
+  --navy-light: oklch(0.35 0.04 240);
+  --glass: oklch(1 0 0 / 60%);
+  --glass-border: oklch(0.85 0.01 240 / 40%);
+
+  /* Charts */
+  --chart-1: oklch(0.72 0.2 60);
+  --chart-2: oklch(0.68 0.18 155);
+  --chart-3: oklch(0.62 0.22 27);
+  --chart-4: oklch(0.65 0.2 280);
+  --chart-5: oklch(0.7 0.16 200);
+
+  /* Sidebar */
+  --sidebar: oklch(0.95 0.003 240);
+  --sidebar-foreground: oklch(0.15 0.02 240);
+  --sidebar-primary: oklch(0.65 0.18 60);
+  --sidebar-primary-foreground: oklch(0.1 0 0);
+  --sidebar-accent: oklch(0.92 0.005 240);
+  --sidebar-accent-foreground: oklch(0.2 0.02 240);
+  --sidebar-border: oklch(0.89 0.007 240);
+  --sidebar-ring: oklch(0.65 0.18 60);
+}
+
+/* ─── Dark Mode (JanMitra Primary Theme) ─── */
+.dark {
+  --background: oklch(0.11 0.025 240);       /* deep navy #0A0F1E */
+  --foreground: oklch(0.95 0.005 240);
+  --card: oklch(0.16 0.03 240);
+  --card-foreground: oklch(0.95 0.005 240);
+  --popover: oklch(0.16 0.03 240);
+  --popover-foreground: oklch(0.95 0.005 240);
+  --primary: oklch(0.72 0.2 60);             /* civic amber */
+  --primary-foreground: oklch(0.08 0.02 240);
+  --secondary: oklch(0.2 0.03 240);
+  --secondary-foreground: oklch(0.95 0.005 240);
+  --muted: oklch(0.18 0.025 240);
+  --muted-foreground: oklch(0.62 0.015 240);
+  --accent: oklch(0.2 0.03 240);
+  --accent-foreground: oklch(0.95 0.005 240);
+  --destructive: oklch(0.65 0.22 27);
+  --border: oklch(1 0 0 / 8%);
+  --input: oklch(1 0 0 / 10%);
+  --ring: oklch(0.72 0.2 60);
+
+  /* JanMitra Brand (dark) */
+  --civic-amber: oklch(0.78 0.18 65);
+  --civic-amber-muted: oklch(0.78 0.18 65 / 12%);
+  --trust-green: oklch(0.72 0.17 155);
+  --trust-green-muted: oklch(0.72 0.17 155 / 12%);
+  --accountability-red: oklch(0.68 0.22 27);
+  --accountability-red-muted: oklch(0.68 0.22 27 / 12%);
+  --warning-yellow: oklch(0.82 0.2 95);
+  --warning-yellow-muted: oklch(0.82 0.2 95 / 12%);
+  --navy-deep: oklch(0.08 0.025 240);
+  --navy-mid: oklch(0.14 0.03 240);
+  --navy-light: oklch(0.22 0.03 240);
+  --glass: oklch(1 0 0 / 5%);
+  --glass-border: oklch(1 0 0 / 10%);
+
+  /* Charts (dark) */
+  --chart-1: oklch(0.78 0.18 65);
+  --chart-2: oklch(0.72 0.17 155);
+  --chart-3: oklch(0.68 0.22 27);
+  --chart-4: oklch(0.7 0.2 280);
+  --chart-5: oklch(0.72 0.16 200);
+
+  /* Sidebar (dark) */
+  --sidebar: oklch(0.13 0.028 240);
+  --sidebar-foreground: oklch(0.95 0.005 240);
+  --sidebar-primary: oklch(0.72 0.2 60);
+  --sidebar-primary-foreground: oklch(0.08 0.02 240);
+  --sidebar-accent: oklch(0.19 0.03 240);
+  --sidebar-accent-foreground: oklch(0.95 0.005 240);
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: oklch(0.72 0.2 60);
+}
+
+/* ─── Base Layer ─── */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply scroll-smooth;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display), var(--font-sans), sans-serif;
+    @apply tracking-tight;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ─── Utility Layer ─── */
+@layer utilities {
+  /* Glassmorphism */
+  .glass {
+    background: var(--glass);
+    backdrop-filter: blur(16px) saturate(1.8);
+    -webkit-backdrop-filter: blur(16px) saturate(1.8);
+    border: 1px solid var(--glass-border);
+  }
+  .glass-strong {
+    background: oklch(1 0 0 / 8%);
+    backdrop-filter: blur(24px) saturate(2);
+    -webkit-backdrop-filter: blur(24px) saturate(2);
+    border: 1px solid oklch(1 0 0 / 15%);
+  }
+  .dark .glass {
+    background: oklch(1 0 0 / 5%);
+    border-color: oklch(1 0 0 / 10%);
+  }
+  .dark .glass-strong {
+    background: oklch(1 0 0 / 8%);
+    border-color: oklch(1 0 0 / 14%);
+  }
+
+  /* SLA Status Badges */
+  .sla-on-track {
+    @apply bg-[var(--trust-green-muted)] text-[var(--trust-green)] border border-[var(--trust-green)]/30;
+  }
+  .sla-at-risk {
+    @apply bg-[var(--warning-yellow-muted)] text-[var(--warning-yellow)] border border-[var(--warning-yellow)]/30;
+  }
+  .sla-breached {
+    @apply bg-[var(--accountability-red-muted)] text-[var(--accountability-red)] border border-[var(--accountability-red)]/30;
+  }
+
+  /* Gradient text */
+  .text-gradient-amber {
+    @apply bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent;
+  }
+  .text-gradient-civic {
+    background: linear-gradient(135deg, oklch(0.85 0.18 60), oklch(0.72 0.2 40));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Glow effects */
+  .glow-amber {
+    box-shadow: 0 0 20px oklch(0.72 0.2 60 / 30%),
+                0 0 60px oklch(0.72 0.2 60 / 10%);
+  }
+  .glow-green {
+    box-shadow: 0 0 20px oklch(0.68 0.18 155 / 30%);
+  }
+  .glow-red {
+    box-shadow: 0 0 20px oklch(0.62 0.22 27 / 30%);
+  }
+
+  /* Animated gradient background */
+  .bg-mesh {
+    background: radial-gradient(ellipse at 20% 50%, oklch(0.72 0.2 60 / 8%) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, oklch(0.68 0.18 155 / 6%) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 80%, oklch(0.65 0.2 280 / 6%) 0%, transparent 50%),
+                var(--background);
+  }
+
+  /* Scrollbar */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(1 0 0 / 15%) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar { width: 5px; height: 5px; }
+  .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: oklch(1 0 0 / 15%);
+    border-radius: 99px;
+  }
+
+  /* Pulse animations for live indicators */
+  .pulse-green {
+    animation: pulse-green 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  .pulse-red {
+    animation: pulse-red 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  .pulse-amber {
+    animation: pulse-amber 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
+
+/* ─── Keyframes ─── */
+@keyframes pulse-green {
+  0%, 100% { box-shadow: 0 0 0 0 oklch(0.68 0.18 155 / 50%); }
+  50% { box-shadow: 0 0 0 8px oklch(0.68 0.18 155 / 0%); }
+}
+@keyframes pulse-red {
+  0%, 100% { box-shadow: 0 0 0 0 oklch(0.62 0.22 27 / 60%); }
+  50% { box-shadow: 0 0 0 8px oklch(0.62 0.22 27 / 0%); }
+}
+@keyframes pulse-amber {
+  0%, 100% { box-shadow: 0 0 0 0 oklch(0.72 0.2 60 / 50%); }
+  50% { box-shadow: 0 0 0 8px oklch(0.72 0.2 60 / 0%); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg,
+    oklch(1 0 0 / 0%) 0%,
+    oklch(1 0 0 / 8%) 50%,
+    oklch(1 0 0 / 0%) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
 }

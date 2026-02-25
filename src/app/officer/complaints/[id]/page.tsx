@@ -1,0 +1,277 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import Link from "next/link";
+import {
+    doc, onSnapshot, collection, addDoc, updateDoc,
+    serverTimestamp
+} from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import {
+    ArrowLeft, CheckCircle2, AlertTriangle, XCircle,
+    RefreshCw, FileEdit, Loader2, ChevronDown
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import { SLACountdown } from "@/components/grievance/SLACountdown";
+import { EventTimeline } from "@/components/grievance/EventTimeline";
+import { useAuth } from "@/features/auth/AuthProvider";
+
+interface GrievanceDoc {
+    id: string;
+    category: string;
+    title: string;
+    description: string;
+    location: { address: string };
+    privacyLevel: string;
+    status: string;
+    slaStatus: string;
+    slaDeadlineAt: string;
+    citizenId: string;
+    createdAt: string;
+}
+
+const STATUS_LABELS: Record<string, string> = {
+    submitted: "Submitted", routed: "Routed", assigned: "Assigned",
+    acknowledged: "Acknowledged", in_progress: "In Progress",
+    escalated: "Escalated", closed: "Resolved", reopened: "Reopened",
+};
+
+export default function OfficerComplaintPage() {
+    const params = useParams<{ id: string }>();
+    const { user } = useAuth();
+    const [grievance, setGrievance] = useState<GrievanceDoc | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [actionLoading, setActionLoading] = useState(false);
+    const [message, setMessage] = useState("");
+    const [selectedStatus, setSelectedStatus] = useState("in_progress");
+
+    useEffect(() => {
+        if (!db || !params.id) return;
+        return onSnapshot(doc(db, "grievances", params.id), (snap) => {
+            if (snap.exists()) setGrievance({ id: snap.id, ...snap.data() } as GrievanceDoc);
+            setLoading(false);
+        });
+    }, [params.id]);
+
+    async function performAction(
+        type: string,
+        newStatus: string,
+        newSlaStatus?: string,
+        extra?: Record<string, string>
+    ) {
+        if (!db || !grievance || !user) return;
+        setActionLoading(true);
+        try {
+            const now = new Date().toISOString();
+
+            // Write event
+            await addDoc(collection(db, "grievances", grievance.id, "events"), {
+                type,
+                actorId: user.id,
+                actorName: user.name ?? "Officer",
+                timestamp: now,
+                payload: {
+                    newStatus,
+                    ...(message ? { message } : {}),
+                    ...extra,
+                },
+            });
+
+            // Update grievance doc
+            const update: Record<string, unknown> = {
+                status: newStatus,
+                updatedAt: now,
+            };
+            if (newSlaStatus) update.slaStatus = newSlaStatus;
+            if (newStatus === "closed") update.closedAt = now;
+
+            await updateDoc(doc(db, "grievances", grievance.id), update);
+
+            toast.success(`Action recorded: ${type.replace(/_/g, " ")}`);
+            setMessage("");
+        } catch (err) {
+            console.error(err);
+            toast.error("Action failed. Please try again.");
+        } finally {
+            setActionLoading(false);
+        }
+    }
+
+    if (loading) return (
+        <div className="min-h-[80vh] flex items-center justify-center">
+            <Loader2 className="w-6 h-6 animate-spin text-[var(--civic-amber)]" />
+        </div>
+    );
+
+    if (!grievance) return (
+        <div className="max-w-2xl mx-auto px-4 py-16 text-center text-muted-foreground">
+            Complaint not found.
+            <Link href="/queue"><Button variant="outline" className="mt-4 border-white/10 block mx-auto">Back to Queue</Button></Link>
+        </div>
+    );
+
+    const isClosed = grievance.status === "closed";
+
+    return (
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+            <Link href="/queue" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+                <ArrowLeft className="w-4 h-4" /> Back to Queue
+            </Link>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Left: Detail + Timeline */}
+                <div className="lg:col-span-2 space-y-6">
+                    {/* Header */}
+                    <div className="glass rounded-2xl p-6 space-y-3">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-mono text-muted-foreground">{grievance.id}</span>
+                            <Badge variant="outline" className="text-[10px] border-white/10 text-muted-foreground">
+                                {grievance.category}
+                            </Badge>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--civic-amber-muted)] text-[var(--civic-amber)]">
+                                {STATUS_LABELS[grievance.status] ?? grievance.status}
+                            </span>
+                        </div>
+                        <h1 className="text-xl font-display font-bold">
+                            {grievance.privacyLevel === "private" ? "[Private Complaint]" : grievance.title}
+                        </h1>
+                        {grievance.privacyLevel !== "private" && (
+                            <p className="text-sm text-foreground/80 leading-relaxed">{grievance.description}</p>
+                        )}
+                        {grievance.location?.address && (
+                            <p className="text-xs text-muted-foreground">📍 {grievance.location.address}</p>
+                        )}
+                        {!isClosed && (
+                            <div className="pt-2">
+                                <SLACountdown slaDeadlineAt={grievance.slaDeadlineAt} />
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Timeline */}
+                    <div className="glass rounded-2xl p-6">
+                        <h2 className="text-sm font-display font-semibold mb-5">Event Timeline</h2>
+                        <EventTimeline grievanceId={grievance.id} />
+                    </div>
+                </div>
+
+                {/* Right: Action Panel */}
+                <div className="space-y-4">
+                    <div className="glass rounded-2xl p-5 space-y-4 sticky top-20">
+                        <h2 className="text-sm font-display font-semibold">Officer Actions</h2>
+
+                        {isClosed ? (
+                            <div className="text-center py-6 text-sm text-muted-foreground">
+                                <CheckCircle2 className="w-8 h-8 text-[var(--trust-green)] mx-auto mb-2" />
+                                Complaint resolved and closed.
+                            </div>
+                        ) : (
+                            <>
+                                {/* Optional message */}
+                                <div className="space-y-2">
+                                    <Label className="text-xs text-muted-foreground">Update message (optional)</Label>
+                                    <Textarea
+                                        value={message}
+                                        onChange={(e) => setMessage(e.target.value)}
+                                        placeholder="Add a note for the citizen…"
+                                        rows={3}
+                                        className="bg-white/5 border-white/10 focus:border-[var(--civic-amber)]/50 text-sm resize-none"
+                                    />
+                                </div>
+
+                                <div className="space-y-2.5">
+                                    {/* Acknowledge */}
+                                    {["submitted", "routed", "assigned"].includes(grievance.status) && (
+                                        <Button
+                                            onClick={() => performAction("ACKNOWLEDGED", "acknowledged")}
+                                            disabled={actionLoading}
+                                            className="w-full bg-[var(--trust-green)] hover:bg-[var(--trust-green)]/90 text-white font-bold gap-2"
+                                        >
+                                            <CheckCircle2 className="w-4 h-4" /> Acknowledge
+                                        </Button>
+                                    )}
+
+                                    {/* Update Status */}
+                                    <div className="flex gap-2">
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="outline" size="sm" className="shrink-0 border-white/10 hover:bg-white/5 gap-1 text-xs">
+                                                    {STATUS_LABELS[selectedStatus]} <ChevronDown className="w-3 h-3" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent className="bg-[var(--card)] border-white/10 w-48">
+                                                {["acknowledged", "in_progress", "escalated"].map((s) => (
+                                                    <DropdownMenuItem
+                                                        key={s}
+                                                        onClick={() => setSelectedStatus(s)}
+                                                        className="text-sm hover:bg-white/5"
+                                                    >
+                                                        {STATUS_LABELS[s]}
+                                                    </DropdownMenuItem>
+                                                ))}
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                        <Button
+                                            onClick={() => performAction("STATUS_UPDATED", selectedStatus)}
+                                            disabled={actionLoading}
+                                            variant="outline"
+                                            className="flex-1 border-white/10 hover:bg-white/5 gap-2 text-sm"
+                                        >
+                                            <RefreshCw className="w-3.5 h-3.5" /> Update
+                                        </Button>
+                                    </div>
+
+                                    {/* Explain Delay */}
+                                    <Button
+                                        onClick={() => {
+                                            if (!message.trim()) { toast.error("Please add a delay reason in the message field."); return; }
+                                            performAction("DELAY_EXPLAINED", grievance.status, undefined, { reason: message });
+                                        }}
+                                        disabled={actionLoading}
+                                        variant="outline"
+                                        className="w-full border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 gap-2 text-sm"
+                                    >
+                                        <FileEdit className="w-3.5 h-3.5" /> Explain Delay
+                                    </Button>
+
+                                    {/* Escalate */}
+                                    <Button
+                                        onClick={() => {
+                                            if (!confirm("Escalate this complaint? This will be visible to the citizen and dept admin.")) return;
+                                            performAction("ESCALATED", "escalated", "breached");
+                                        }}
+                                        disabled={actionLoading}
+                                        variant="outline"
+                                        className="w-full border-[var(--accountability-red)]/30 text-[var(--accountability-red)] hover:bg-[var(--accountability-red-muted)] gap-2 text-sm"
+                                    >
+                                        <AlertTriangle className="w-3.5 h-3.5" /> Escalate
+                                    </Button>
+
+                                    {/* Resolve */}
+                                    <Button
+                                        onClick={() => {
+                                            if (!confirm("Mark this complaint as resolved and closed?")) return;
+                                            performAction("CLOSED", "closed");
+                                        }}
+                                        disabled={actionLoading}
+                                        className="w-full bg-[var(--civic-amber)] text-[var(--navy-deep)] hover:bg-[var(--civic-amber)]/90 font-bold gap-2"
+                                    >
+                                        {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><XCircle className="w-4 h-4" /> Mark Resolved</>}
+                                    </Button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
