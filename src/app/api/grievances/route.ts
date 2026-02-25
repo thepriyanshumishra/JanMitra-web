@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { validateSession } from "@/lib/auth-middleware";
 
 // ── ID generator ─────────────────────────────────────────────────
 function generateGrievanceId(): string {
@@ -10,8 +11,11 @@ function generateGrievanceId(): string {
 // ── POST /api/grievances ──────────────────────────────────────────
 export async function POST(req: NextRequest) {
     try {
-        const sessionCookie = req.cookies.get("jm_session")?.value;
-        if (!sessionCookie) {
+        let session;
+        try {
+            session = await validateSession(req);
+        } catch (e) {
+            if (e instanceof Response) return e;
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 

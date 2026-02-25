@@ -150,28 +150,30 @@ export function AppNavbar() {
                                         </Badge>
                                     </DropdownMenuLabel>
 
-                                    {/* ── DEMO: Quick Role Switcher ── */}
-                                    <DropdownMenuSeparator className="bg-white/10" />
-                                    <DropdownMenuLabel className="text-[10px] text-muted-foreground uppercase pb-0">Demo Role Switch</DropdownMenuLabel>
-                                    {(["citizen", "officer", "dept_admin", "system_admin"] as UserRole[]).map((r) => (
-                                        <DropdownMenuItem
-                                            key={r}
-                                            disabled={user.role === r}
-                                            onClick={async () => {
-                                                if (!db) return;
-                                                const { doc, updateDoc } = await import("firebase/firestore");
-                                                await updateDoc(doc(db, "users", user.id), { role: r });
-                                                // Sync AuthProvider cache BEFORE navigating so the
-                                                // layout guard sees the new role immediately.
-                                                await refreshUser();
-                                                window.location.href = ROLE_HOME[r];
-                                            }}
-                                            className="text-xs py-1.5 cursor-pointer hover:bg-white/5 flex items-center justify-between"
-                                        >
-                                            {ROLE_LABEL[r]}
-                                            {user.role === r && <CheckCircle2 className="w-3 h-3 text-[var(--civic-amber)]" />}
-                                        </DropdownMenuItem>
-                                    ))}
+                                    {/* ── DEMO: Quick Role Switcher (dev only) ── */}
+                                    {process.env.NODE_ENV === "development" && (<>
+                                        <DropdownMenuSeparator className="bg-white/10" />
+                                        <DropdownMenuLabel className="text-[10px] text-muted-foreground uppercase pb-0">Demo Role Switch</DropdownMenuLabel>
+                                        {(["citizen", "officer", "dept_admin", "system_admin"] as UserRole[]).map((r) => (
+                                            <DropdownMenuItem
+                                                key={r}
+                                                disabled={user.role === r}
+                                                onClick={async () => {
+                                                    if (!db) return;
+                                                    const { doc, updateDoc } = await import("firebase/firestore");
+                                                    await updateDoc(doc(db, "users", user.id), { role: r });
+                                                    // Sync AuthProvider cache BEFORE navigating so the
+                                                    // layout guard sees the new role immediately.
+                                                    await refreshUser();
+                                                    window.location.href = ROLE_HOME[r];
+                                                }}
+                                                className="text-xs py-1.5 cursor-pointer hover:bg-white/5 flex items-center justify-between"
+                                            >
+                                                {ROLE_LABEL[r]}
+                                                {user.role === r && <CheckCircle2 className="w-3 h-3 text-[var(--civic-amber)]" />}
+                                            </DropdownMenuItem>
+                                        ))}
+                                    </>)}
                                     {/* ─────────────────────────────── */}
 
                                     <DropdownMenuSeparator className="bg-white/10" />
