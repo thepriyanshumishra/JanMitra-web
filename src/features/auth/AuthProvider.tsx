@@ -16,6 +16,7 @@ import {
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import type { User, UserRole } from "@/types";
+import { toast } from "sonner";
 
 interface AuthContextValue {
     user: User | null;
@@ -65,6 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return newUser;
         } catch (err) {
             console.error("Error fetching user profile:", err);
+            toast.error("Account Error: Could not load your profile. Please check Firestore permissions.");
             return null;
         }
     }, []);

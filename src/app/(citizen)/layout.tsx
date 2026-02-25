@@ -8,13 +8,11 @@ export const metadata: Metadata = {
 
 export default function CitizenLayout({ children }: { children: React.ReactNode }) {
     return (
-        <AuthProvider>
-            <div className="min-h-screen bg-mesh">
-                <AppNavbar />
-                <main className="pt-16">
-                    {children}
-                </main>
-            </div>
-        </AuthProvider>
+        <div className="min-h-screen bg-mesh">
+            <AppNavbar />
+            <main className="pt-16">
+                {children}
+            </main>
+        </div>
     );
 }

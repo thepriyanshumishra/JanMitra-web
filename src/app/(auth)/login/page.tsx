@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { loginWithEmail, sendOTP, verifyOTP, loginWithGoogle, sendPasswordlessLink, getRedirectResult } from "@/features/auth/authHelpers";
+import { loginWithEmail, sendOTP, verifyOTP, loginWithGoogle, sendPasswordlessLink } from "@/features/auth/authHelpers";
 import { useRoleRedirect } from "@/hooks/useAuth";
 import type { ConfirmationResult } from "firebase/auth";
 import { RecaptchaVerifier } from "firebase/auth";
@@ -33,24 +33,6 @@ function LoginContent() {
     const [otp, setOtp] = useState("");
     const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
     const [otpSent, setOtpSent] = useState(false);
-
-    // ── Google Redirect Result handler ───────────────────────────────
-    // Must be BEFORE any early return to satisfy React hooks rules.
-    // When signInWithRedirect returns, Firebase lands back on /login and
-    // we call getRedirectResult() to finalize the token exchange.
-    useEffect(() => {
-        if (!auth) return;
-        getRedirectResult(auth).then((result) => {
-            if (result?.user) {
-                toast.success("Welcome back!");
-                // AuthProvider's onAuthStateChanged fires → useRoleRedirect navigates
-            }
-        }).catch((err: unknown) => {
-            const msg = err instanceof Error ? err.message : "Google sign-in failed";
-            if (msg.includes("popup-closed") || msg.includes("cancelled")) return;
-            toast.error(msg);
-        });
-    }, []);
 
     if (authLoading) return null; // redirect in progress
 
@@ -92,9 +74,16 @@ function LoginContent() {
         setLoading(true);
         try {
             await loginWithGoogle();
-            toast.success("Welcome back!");
         } catch (err: unknown) {
-            toast.error("Google login failed.");
+            console.error("Google Auth Error:", err);
+            const msg = err instanceof Error ? err.message : String(err);
+            if (msg.includes("popup-closed-by-user")) {
+                toast.error("Sign-in popup was closed.");
+            } else if (msg.includes("auth/cancelled-popup-request")) {
+                // Ignore
+            } else {
+                toast.error(`Login failed: ${msg}`);
+            }
         } finally {
             setLoading(false);
         }

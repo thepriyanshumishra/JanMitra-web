@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AuthProvider } from "@/features/auth/AuthProvider";
 import "./globals.css";
 
 const inter = Inter({
@@ -58,7 +59,9 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <TooltipProvider delayDuration={200}>
-            {children}
+            <AuthProvider>
+              {children}
+            </AuthProvider>
             <Toaster
               theme="dark"
               position="top-right"

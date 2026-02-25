@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isSignInWithEmailLink, signInWithEmailLink } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { getRedirectResult } from "@/features/auth/authHelpers";
 import { Loader2, Shield, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -16,21 +15,7 @@ export default function LoginCallbackPage() {
         async function completeSignIn() {
             if (!auth) return;
 
-            // ── 1. Handle Google Redirect result ────────────────────
-            try {
-                const result = await getRedirectResult(auth);
-                if (result?.user) {
-                    toast.success("Welcome back!");
-                    router.push("/dashboard");
-                    return;
-                }
-            } catch (err: unknown) {
-                const msg = err instanceof Error ? err.message : "Google sign-in failed";
-                setError(msg);
-                return;
-            }
-
-            // ── 2. Handle Passwordless Email link ────────────────────
+            // ── Handle Passwordless Email link ────────────────────
             if (isSignInWithEmailLink(auth, window.location.href)) {
                 let email = window.localStorage.getItem("emailForSignIn");
                 if (!email) {
