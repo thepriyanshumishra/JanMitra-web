@@ -214,7 +214,7 @@ export default function TransparencyDashboard() {
                         },
                         {
                             label: "SLA Honesty Rate",
-                            value: publicStats ? `${publicStats.slaHonestyRate}%` : `${resolutionRate}%`,
+                            value: `${publicStats?.slaHonestyRate ?? resolutionRate}%`,
                             sub: publicStats ? `${publicStats.resolvedOnTime} resolved on time` : `${resolved} resolved`,
                             icon: <Clock className="w-5 h-5" />,
                             color: "text-purple-400",
@@ -329,9 +329,9 @@ export default function TransparencyDashboard() {
                                 <p className="text-xs text-muted-foreground mt-0.5">Last 14 days of complaint traffic</p>
                             </div>
                         </div>
-                        <div className="h-[240px]">
+                        <div className="h-[240px] w-full">
                             {trendData.length > 0 ? (
-                                <ResponsiveContainer width="100%" height="100%">
+                                <ResponsiveContainer width="100%" height="100%" debounce={50}>
                                     <AreaChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                         <defs>
                                             <linearGradient id="gOnTrack" x1="0" y1="0" x2="0" y2="1">
@@ -362,9 +362,9 @@ export default function TransparencyDashboard() {
                             <h2 className="font-display font-semibold text-base">Category Hot-Zones</h2>
                             <p className="text-xs text-muted-foreground mt-0.5">Complaint volume by type</p>
                         </div>
-                        <div className="h-[240px]">
+                        <div className="h-[240px] w-full">
                             {categoryData.length > 0 ? (
-                                <ResponsiveContainer width="100%" height="100%">
+                                <ResponsiveContainer width="100%" height="100%" debounce={50}>
                                     <BarChart data={categoryData} layout="vertical" margin={{ top: 0, right: 20, left: 0, bottom: 0 }}>
                                         <CartesianGrid strokeDasharray="3 3" horizontal={false} vertical={true} stroke="rgba(255,255,255,0.05)" />
                                         <XAxis type="number" hide />

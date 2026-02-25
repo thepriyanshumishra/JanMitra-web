@@ -13,6 +13,7 @@ export async function GET() {
         return NextResponse.json({
             totalComplaints: 0,
             resolvedOnTime: 0,
+            slaHonestyRate: 0,
             departments: [],
             heatmapData: [],
         });
