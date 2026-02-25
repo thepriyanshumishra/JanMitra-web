@@ -29,17 +29,20 @@ service cloud.firestore {
     }
 
     // ─── users/{uid} ────────────────────────────────────────────────
-    // Read: own doc only. Writes: Admin SDK only (no client writes).
+    // Read: own doc or admin. Write: own doc only (create profile & update name).
+    // Hard deletes via Admin SDK only; client marks doc with deleted:true.
     match /users/{uid} {
       allow read: if isOwner(uid) || isAdmin();
-      allow write: if false; // All writes through Admin SDK only
+      allow create: if isOwner(uid);            // AuthProvider creates profile on first login
+      allow update: if isOwner(uid);            // Profile page: name, fcmToken, deleted flag
+      allow delete: if false;                   // Hard deletes via Admin SDK only
     }
 
     // ─── departments/{deptId} ───────────────────────────────────────
-    // Public read. System admin write via Admin SDK only.
+    // Public read. Client writes allowed for system_admin (custom claim).
     match /departments/{deptId} {
       allow read: if true;
-      allow write: if false; // API route enforces system_admin
+      allow write: if isSystemAdmin();          // System admin CRUD via departments page
     }
 
     // ─── departmentStats/{deptId} ───────────────────────────────────
@@ -51,30 +54,35 @@ service cloud.firestore {
 
     // ─── grievances/{grievanceId} ───────────────────────────────────
     match /grievances/{grievanceId} {
-      // Citizens: read their own complaints
-      // Officers/Admins: read all (department-level filtering done in API)
+      // Citizens: read own complaints
+      // Officers/Admins: read all (department-level filtering in API)
       // Public: read-only if privacyLevel == "public"
       allow read: if
         isOwner(resource.data.citizenId) ||
         isOfficer() ||
         resource.data.privacyLevel == 'public';
 
-      // Only the server (Admin SDK) may create/update grievances
-      allow write: if false;
+      // Citizens can update specific fields on their OWN complaint:
+      //   - supportCount / supporterIds (support signal)
+      //   - status / slaStatus / reopenCount / updatedAt (reopen)
+      //   - feedback (rate resolution)
+      // All other writes (create, routing, status from officer) via Admin SDK.
+      allow update: if isOwner(resource.data.citizenId);
+      allow create, delete: if false;
 
       // ── Events subcollection (append-only) ───────────────────────
       match /events/{eventId} {
-        // Authenticated users can read events in their own complaints
-        // Officers can read all events
         allow read: if
           isAuthenticated() &&
           (
             isOfficer() ||
             get(/databases/$(database)/documents/grievances/$(grievanceId)).data.citizenId == request.auth.uid
           );
-
-        // No client-side writes — events are only written by the API routes
-        allow write: if false;
+        // Citizens can append reopen/feedback events on their own complaints
+        allow create: if
+          isAuthenticated() &&
+          get(/databases/$(database)/documents/grievances/$(grievanceId)).data.citizenId == request.auth.uid;
+        allow update, delete: if false;
       }
     }
 
