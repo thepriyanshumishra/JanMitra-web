@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import {
     Loader2, Activity, Map as MapIcon, ShieldAlert,
@@ -85,7 +85,7 @@ export default function TransparencyDashboard() {
 
     useEffect(() => {
         if (!db) return;
-        const q = query(collection(db, "grievances"), orderBy("createdAt", "desc"));
+        const q = query(collection(db, "grievances"), where("privacyLevel", "==", "public"), orderBy("createdAt", "desc"));
         return onSnapshot(q, (snap) => {
             setComplaints(snap.docs.map(d => ({ id: d.id, ...d.data() } as Grievance)));
             setLoading(false);
