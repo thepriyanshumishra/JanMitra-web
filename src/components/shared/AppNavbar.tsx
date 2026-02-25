@@ -2,7 +2,12 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Bell, LogOut, User, ChevronDown, CheckCircle2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+    Bell, LogOut, User, ChevronDown, CheckCircle2,
+    Menu, X, LayoutDashboard, FileText, Globe,
+    Settings, ShieldCheck, Heart, Info, Activity
+} from "lucide-react";
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +24,7 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { ROLE_HOME } from "@/hooks/useAuth";
 import type { UserRole } from "@/types";
 import { ThemeToggle } from "./ThemeToggle";
+import { cn } from "@/lib/utils";
 
 const ROLE_LABEL: Record<UserRole, string> = {
     citizen: "Citizen",
@@ -28,199 +34,299 @@ const ROLE_LABEL: Record<UserRole, string> = {
 };
 
 const ROLE_COLOR: Record<UserRole, string> = {
-    citizen: "bg-[var(--trust-green-muted)] text-[var(--trust-green)]",
-    officer: "bg-blue-500/10 text-blue-400",
-    dept_admin: "bg-purple-500/10 text-purple-400",
-    system_admin: "bg-[var(--civic-amber-muted)] text-[var(--civic-amber)]",
+    citizen: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+    officer: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+    dept_admin: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+    system_admin: "bg-amber-500/10 text-amber-400 border-amber-500/20",
 };
 
 export function AppNavbar() {
     const { user, signOut, refreshUser } = useAuth();
     const pathname = usePathname();
     const router = useRouter();
+    const [scrolled, setScrolled] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+    useEffect(() => {
+        const handleScroll = () => setScrolled(window.scrollY > 20);
+        window.addEventListener("scroll", handleScroll);
+        return () => window.removeEventListener("scroll", handleScroll);
+    }, []);
 
     const handleSignOut = async () => {
         await signOut();
         router.push("/");
     };
 
-    const isActive = (href: string) => pathname.startsWith(href);
+    const isActive = (href: string) => {
+        if (href === "/" && pathname !== "/") return false;
+        return pathname.startsWith(href);
+    };
 
     const navLinks = [
-        { href: "/", label: "Home" },
         ...(user?.role === "citizen"
             ? [
-                { href: "/dashboard", label: "My Complaints" },
-                { href: "/submit", label: "File Complaint" },
-                { href: "/transparency", label: "Transparency" },
+                { href: "/dashboard", label: "My Hub", icon: <LayoutDashboard className="w-4 h-4" /> },
+                { href: "/submit", label: "Report Issue", icon: <FileText className="w-4 h-4" /> },
+                { href: "/transparency", label: "Registry", icon: <Globe className="w-4 h-4" /> },
             ]
             : user?.role === "officer"
                 ? [
-                    { href: "/officer", label: "My Queue" },
-                    { href: "/transparency", label: "Transparency" },
+                    { href: "/officer", label: "Desk", icon: <LayoutDashboard className="w-4 h-4" /> },
+                    { href: "/transparency", label: "Registry", icon: <Globe className="w-4 h-4" /> },
                 ]
                 : user?.role === "dept_admin"
                     ? [
-                        { href: "/admin/dept", label: "Dashboard" },
-                        { href: "/admin/dept/analytics", label: "Analytics" },
-                        { href: "/transparency", label: "Transparency" },
+                        { href: "/admin/dept", label: "Control", icon: <ShieldCheck className="w-4 h-4" /> },
+                        { href: "/admin/dept/analytics", label: "Insights", icon: <Activity className="w-4 h-4" /> },
+                        { href: "/transparency", label: "Registry", icon: <Globe className="w-4 h-4" /> },
                     ]
                     : user?.role === "system_admin"
                         ? [
-                            { href: "/admin/system", label: "Overview" },
-                            { href: "/admin/system/departments", label: "Departments" },
-                            { href: "/transparency", label: "Transparency" },
+                            { href: "/admin/system", label: "Network", icon: <Settings className="w-4 h-4" /> },
+                            { href: "/admin/system/departments", label: "Units", icon: <ShieldCheck className="w-4 h-4" /> },
+                            { href: "/transparency", label: "Registry", icon: <Globe className="w-4 h-4" /> },
                         ]
                         : [
-                            { href: "/transparency", label: "Transparency" },
-                            { href: "/about", label: "About" },
+                            { href: "/", label: "Home", icon: <Heart className="w-4 h-4" /> },
+                            { href: "/transparency", label: "Transparency", icon: <Globe className="w-4 h-4" /> },
+                            { href: "/about", label: "About", icon: <Info className="w-4 h-4" /> },
                         ])
     ];
 
-    // Logo always goes home now for better platform navigation
-    const home = "/";
-
     return (
-        <nav className="fixed top-0 inset-x-0 z-50 glass border-b border-[var(--glass-border)]">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-                {/* Logo */}
-                <Link href={home} className="flex items-center gap-2.5">
-                    <img src="/icons/icon-192x192.png" alt="JanMitra" className="w-9 h-9 drop-shadow-[0_0_12px_rgba(245,158,11,0.4)]" />
-                    <span className="font-display text-lg font-bold tracking-tight">JanMitra</span>
+        <header
+            className={cn(
+                "fixed top-0 inset-x-0 z-50 transition-all duration-500 flex justify-center pt-4 px-4",
+                scrolled ? "pt-2" : "pt-6"
+            )}
+        >
+            <nav
+                className={cn(
+                    "w-full max-w-7xl h-16 rounded-[24px] transition-all duration-500 flex items-center justify-between px-4 sm:px-6 relative overflow-hidden",
+                    "glass border border-white/10",
+                    scrolled
+                        ? "shadow-[0_8px_32px_rgba(0,0,0,0.4)] backdrop-blur-2xl bg-black/40 h-14"
+                        : "shadow-none bg-white/[0.03]"
+                )}
+            >
+                {/* Visual Accent */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/3 h-[1px] bg-gradient-to-r from-transparent via-[var(--civic-amber)]/30 to-transparent pointer-events-none" />
+
+                {/* Left Section: Logo */}
+                <Link href="/" className="flex items-center gap-3 group relative z-10 shrink-0">
+                    <div className="relative">
+                        <div className="absolute inset-0 bg-[var(--civic-amber)] rounded-xl blur-lg opacity-20 group-hover:opacity-40 transition-opacity" />
+                        <img
+                            src="/icons/icon-192x192.png"
+                            alt="JanMitra"
+                            className="w-8 h-8 sm:w-9 sm:h-9 relative transform transition-transform group-hover:scale-105"
+                        />
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="font-display text-base sm:text-lg font-black tracking-tight leading-none text-white">JanMitra</span>
+                        <span className="text-[10px] font-bold text-[var(--civic-amber)] uppercase tracking-widest opacity-80 mt-0.5">Jan-Kalyan</span>
+                    </div>
                 </Link>
 
-                {/* Nav links */}
-                {navLinks.length > 0 && (
-                    <div className="hidden md:flex items-center gap-1">
-                        {navLinks.map((link) => (
-                            <Link
-                                key={link.href}
-                                href={link.href}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isActive(link.href)
-                                    ? "bg-white/10 text-foreground"
-                                    : "text-muted-foreground hover:text-foreground hover:bg-white/5"
-                                    }`}
-                            >
-                                {link.label}
-                            </Link>
-                        ))}
-                    </div>
-                )}
+                {/* Center Section: Navigation (Desktop) */}
+                <div className="hidden lg:flex items-center gap-1 absolute left-1/2 -translate-x-1/2 bg-white/5 rounded-2xl p-1 border border-white/5">
+                    {navLinks.map((link) => (
+                        <Link
+                            key={link.href}
+                            href={link.href}
+                            className={cn(
+                                "relative px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-300 flex items-center gap-2",
+                                isActive(link.href)
+                                    ? "text-white bg-white/10 shadow-sm"
+                                    : "text-muted-foreground hover:text-white hover:bg-white/5"
+                            )}
+                        >
+                            <span className={cn(
+                                "transition-colors",
+                                isActive(link.href) ? "text-[var(--civic-amber)]" : "text-muted-foreground group-hover:text-white"
+                            )}>
+                                {link.icon}
+                            </span>
+                            {link.label}
+                            {isActive(link.href) && (
+                                <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[var(--civic-amber)] shadow-[0_0_8px_var(--civic-amber)]" />
+                            )}
+                        </Link>
+                    ))}
+                </div>
 
-                {/* Right side */}
-                <div className="flex items-center gap-3">
-                    <ThemeToggle />
+                {/* Right Section: Actions */}
+                <div className="flex items-center gap-2 sm:gap-4 relative z-10">
+                    <div className="hidden sm:flex items-center gap-2">
+                        <ThemeToggle />
+                    </div>
+
                     {user ? (
-                        <>
-                            {/* Notifications */}
+                        <div className="flex items-center gap-2">
+                            {/* Notification Bell */}
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                aria-label="View notifications"
-                                className="relative text-muted-foreground hover:text-foreground"
+                                className="relative rounded-xl hover:bg-white/5 text-muted-foreground hover:text-white transition-all transform hover:scale-105 hidden sm:flex"
+                                aria-label="Notifications"
                             >
-                                <Bell className="w-4 h-4" />
-                                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[var(--accountability-red)] rounded-full pulse-red" />
+                                <Bell className="w-5 h-5" />
+                                <span className="absolute top-2 right-2 w-2 h-2 bg-[var(--accountability-red)] rounded-full border-2 border-[var(--navy-deep)] pulse-red" />
                             </Button>
 
-                            {/* User menu */}
+                            {/* User Profile Trigger */}
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button
-                                        variant="ghost"
-                                        className="flex items-center gap-2 h-9 px-3 hover:bg-white/5"
-                                    >
-                                        <Avatar className="w-7 h-7 bg-[var(--civic-amber-muted)] border border-[var(--civic-amber)]/30">
-                                            <span className="text-xs font-bold text-[var(--civic-amber)]">
-                                                {user.name?.charAt(0)?.toUpperCase() ?? "?"}
-                                            </span>
+                                    <button className="flex items-center gap-2 p-1 pl-1 pr-2 sm:pr-3 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-all outline-none group">
+                                        <Avatar className="w-7 h-7 sm:w-8 sm:h-8 border-2 border-[var(--civic-amber)]/20 shadow-lg transition-transform group-hover:scale-105">
+                                            <div className="w-full h-full bg-gradient-to-br from-[var(--civic-amber)] to-orange-600 flex items-center justify-center text-white font-black text-xs sm:text-sm">
+                                                {user.name?.charAt(0)?.toUpperCase()}
+                                            </div>
                                         </Avatar>
-                                        <span className="hidden sm:block text-sm font-medium max-w-[100px] truncate">
-                                            {user.name?.split(" ")[0]}
-                                        </span>
-                                        <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
-                                    </Button>
+                                        <div className="hidden sm:flex flex-col items-start leading-tight">
+                                            <span className="text-xs font-black text-white truncate max-w-[80px]">
+                                                {user.name?.split(" ")[0]}
+                                            </span>
+                                            <span className="text-[9px] font-bold text-[var(--civic-amber)] uppercase tracking-tighter">
+                                                {ROLE_LABEL[user.role]}
+                                            </span>
+                                        </div>
+                                        <ChevronDown className="w-3.5 h-3.5 text-muted-foreground group-hover:text-white transition-colors" />
+                                    </button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent
-                                    align="end"
-                                    className="w-56 bg-[var(--card)] border-white/10"
-                                >
-                                    <DropdownMenuLabel className="space-y-1">
-                                        <p className="text-sm font-medium">{user.name}</p>
-                                        <p className="text-xs text-muted-foreground font-normal truncate">
-                                            {user.email ?? user.phone}
-                                        </p>
-                                        <Badge
-                                            variant="secondary"
-                                            className={`text-[10px] font-semibold ${ROLE_COLOR[user.role]}`}
-                                        >
-                                            {ROLE_LABEL[user.role]}
-                                        </Badge>
-                                    </DropdownMenuLabel>
+                                <DropdownMenuContent align="end" className="w-[280px] mt-4 glass border-white/10 p-2 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                                    <div className="px-4 py-4 mb-2 bg-white/5 rounded-2xl border border-white/5">
+                                        <div className="flex items-center gap-3">
+                                            <Avatar className="w-12 h-12 border-2 border-[var(--civic-amber)]">
+                                                <div className="w-full h-full bg-gradient-to-br from-[var(--civic-amber)] to-orange-600 flex items-center justify-center text-white font-black text-xl">
+                                                    {user.name?.charAt(0)?.toUpperCase()}
+                                                </div>
+                                            </Avatar>
+                                            <div className="flex-1 min-w-0">
+                                                <h4 className="text-sm font-black truncate text-white">{user.name}</h4>
+                                                <p className="text-[10px] text-muted-foreground truncate">{user.email ?? user.phone}</p>
+                                                <Badge className={cn("mt-1.5 text-[9px] px-1.5 py-0 border", ROLE_COLOR[user.role])}>
+                                                    {ROLE_LABEL[user.role]}
+                                                </Badge>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                    {/* ── DEMO: Quick Role Switcher (dev only) ── */}
-                                    {process.env.NODE_ENV === "development" && (<>
-                                        <DropdownMenuSeparator className="bg-white/10" />
-                                        <DropdownMenuLabel className="text-[10px] text-muted-foreground uppercase pb-0">Demo Role Switch</DropdownMenuLabel>
-                                        {(["citizen", "officer", "dept_admin", "system_admin"] as UserRole[]).map((r) => (
-                                            <DropdownMenuItem
-                                                key={r}
-                                                disabled={user.role === r}
-                                                onClick={async () => {
-                                                    if (!db) return;
-                                                    const { doc, updateDoc } = await import("firebase/firestore");
-                                                    await updateDoc(doc(db, "users", user.id), { role: r });
-                                                    // Sync AuthProvider cache BEFORE navigating so the
-                                                    // layout guard sees the new role immediately.
-                                                    await refreshUser();
-                                                    window.location.href = ROLE_HOME[r];
-                                                }}
-                                                className="text-xs py-1.5 cursor-pointer hover:bg-white/5 flex items-center justify-between"
-                                            >
-                                                {ROLE_LABEL[r]}
-                                                {user.role === r && <CheckCircle2 className="w-3 h-3 text-[var(--civic-amber)]" />}
-                                            </DropdownMenuItem>
-                                        ))}
-                                    </>)}
-                                    {/* ─────────────────────────────── */}
-
-                                    <DropdownMenuSeparator className="bg-white/10" />
-                                    <DropdownMenuItem asChild className="cursor-pointer hover:bg-white/5">
-                                        <Link href="/profile" className="flex items-center gap-2">
-                                            <User className="w-4 h-4" /> My Profile
+                                    {/* Quick Links */}
+                                    <DropdownMenuLabel className="px-2 text-[10px] font-black uppercase text-muted-foreground tracking-widest py-1">Management</DropdownMenuLabel>
+                                    <DropdownMenuItem className="rounded-xl focus:bg-white/10 cursor-pointer transition-colors py-2.5">
+                                        <Link href="/profile" className="flex items-center gap-3 w-full">
+                                            <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400">
+                                                <User className="w-4 h-4" />
+                                            </div>
+                                            <span className="font-bold text-sm">Account Profile</span>
                                         </Link>
                                     </DropdownMenuItem>
-                                    <DropdownMenuSeparator className="bg-white/10" />
+
+                                    <DropdownMenuItem className="rounded-xl focus:bg-white/10 cursor-pointer transition-colors py-2.5">
+                                        <Link href="/profile/notifications" className="flex items-center gap-3 w-full">
+                                            <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500">
+                                                <Bell className="w-4 h-4" />
+                                            </div>
+                                            <span className="font-bold text-sm">Notifications</span>
+                                        </Link>
+                                    </DropdownMenuItem>
+
+                                    <DropdownMenuSeparator className="bg-white/5 my-1.5" />
+
                                     <DropdownMenuItem
                                         onClick={handleSignOut}
-                                        className="cursor-pointer text-[var(--accountability-red)] hover:bg-[var(--accountability-red-muted)] hover:text-[var(--accountability-red)] gap-2"
+                                        className="rounded-xl focus:bg-red-500/10 text-red-400 hover:text-red-400 cursor-pointer transition-colors py-2.5 font-bold"
                                     >
-                                        <LogOut className="w-4 h-4" /> Sign out
+                                        <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center">
+                                            <LogOut className="w-4 h-4" />
+                                        </div>
+                                        End Session
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
-                        </>
+                        </div>
                     ) : (
-                        <div className="flex items-center gap-3">
-                            <Link href="/transparency">
-                                <Button variant="ghost" size="sm" className="hidden sm:inline-flex text-muted-foreground hover:text-foreground">
-                                    Transparency
-                                </Button>
-                            </Link>
-                            <Link href="/login">
-                                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                        <div className="flex items-center gap-2">
+                            <Link href="/login" className="hidden sm:block">
+                                <Button variant="ghost" size="sm" className="font-bold text-xs uppercase tracking-wider text-muted-foreground hover:text-white">
                                     Sign In
                                 </Button>
                             </Link>
                             <Link href="/submit">
-                                <Button size="sm" className="bg-[var(--civic-amber)] text-[var(--navy-deep)] hover:bg-[var(--civic-amber)]/90 font-semibold glow-amber">
-                                    File a Complaint
+                                <Button size="sm" className="rounded-full px-5 bg-[var(--civic-amber)] text-[var(--navy-deep)] hover:bg-[var(--civic-amber)]/90 font-black text-xs uppercase tracking-tighter glow-amber transition-all hover:scale-105 active:scale-95">
+                                    Report Issue
                                 </Button>
                             </Link>
                         </div>
                     )}
+
+                    {/* Mobile Menu Trigger */}
+                    <button
+                        className="lg:hidden w-9 h-9 flex items-center justify-center rounded-xl glass border-white/10 text-white"
+                        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                    >
+                        {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                    </button>
+                </div>
+            </nav>
+
+            {/* Mobile Menu Overlay */}
+            <div
+                className={cn(
+                    "fixed inset-0 top-[72px] z-40 lg:hidden transition-all duration-500 ease-in-out",
+                    mobileMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+                )}
+            >
+                {/* Backdrop */}
+                <div className="absolute inset-0 bg-black/80 backdrop-blur-xl" onClick={() => setMobileMenuOpen(false)} />
+
+                {/* Content */}
+                <div
+                    className={cn(
+                        "absolute inset-x-4 top-4 glass border border-white/10 rounded-3xl p-6 transition-transform duration-500",
+                        mobileMenuOpen ? "translate-y-0" : "-translate-y-10"
+                    )}
+                >
+                    <div className="flex flex-col gap-4">
+                        <div className="text-[10px] font-black uppercase text-muted-foreground tracking-widest pl-2">Navigation</div>
+                        {navLinks.map((link) => (
+                            <Link
+                                key={link.href}
+                                href={link.href}
+                                onClick={() => setMobileMenuOpen(false)}
+                                className={cn(
+                                    "flex items-center gap-4 px-4 py-4 rounded-2xl border transition-all",
+                                    isActive(link.href)
+                                        ? "bg-[var(--civic-amber)]/10 border-[var(--civic-amber)]/20 text-white font-black"
+                                        : "bg-white/5 border-white/5 text-muted-foreground"
+                                )}
+                            >
+                                <span className={isActive(link.href) ? "text-[var(--civic-amber)]" : ""}>
+                                    {link.icon}
+                                </span>
+                                {link.label}
+                            </Link>
+                        ))}
+
+                        <div className="h-[1px] bg-white/5 my-2" />
+
+                        {!user && (
+                            <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
+                                <Button className="w-full bg-white/5 border border-white/10 text-white font-black h-14 rounded-2xl">
+                                    Sign In to JanMitra
+                                </Button>
+                            </Link>
+                        )}
+
+                        <div className="flex items-center justify-between px-2 pt-2">
+                            <span className="text-xs text-muted-foreground">Dark / Light Mode</span>
+                            <ThemeToggle />
+                        </div>
+                    </div>
                 </div>
             </div>
-        </nav>
+        </header>
     );
 }
