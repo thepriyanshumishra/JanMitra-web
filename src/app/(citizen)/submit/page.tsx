@@ -6,7 +6,8 @@ import {
     Droplets, Trash2, Navigation, Zap, Bus, HeartPulse,
     BookOpen, TreePine, Wind, Home, Shield, HelpCircle,
     MapPin, Upload, X, CheckCircle2, Loader2, ChevronLeft,
-    ChevronRight, Eye, EyeOff, Lock, Users, Sparkles, PenLine
+    ChevronRight, Eye, EyeOff, Lock, Users, Sparkles, PenLine,
+    Map as MapIcon, UploadCloud, Video, FileText, ImageIcon, Search, Crosshair
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +22,7 @@ import { uploadMultipleFiles } from "@/lib/uploadFile";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { ManusChatView } from "@/features/manus/ManusChatView";
+import { LocationModal } from "@/features/manus/LocationModal";
 
 // ─── Category data ────────────────────────────────────────────────
 const CATEGORIES = [
@@ -102,6 +104,10 @@ export default function SubmitComplaintPage() {
     const [form, setForm] = useState<FormData>(INITIAL_FORM);
     const [submitting, setSubmitting] = useState(false);
     const [dragOver, setDragOver] = useState(false);
+
+    // Maps state for manual flow
+    const [locationModalOpen, setLocationModalOpen] = useState(false);
+    const [capturedLatLon, setCapturedLatLon] = useState<{ lat: string; lon: string } | null>(null);
 
     // File handling
     const addFiles = useCallback((newFiles: FileList | File[]) => {
@@ -235,8 +241,8 @@ export default function SubmitComplaintPage() {
                                     ? "bg-[var(--trust-green)] text-white"
                                     : i === step
                                         ? "bg-[var(--civic-amber)] text-[var(--navy-deep)]"
-                                        : "bg-white/10 text-muted-foreground"
-                                    }`}
+                                        : "bg-foreground/10 text-muted-foreground"
+                                    } `}
                             >
                                 {i < step ? <CheckCircle2 className="w-3 h-3" /> : i + 1}
                             </div>
@@ -244,7 +250,7 @@ export default function SubmitComplaintPage() {
                         </div>
                     ))}
                 </div>
-                <Progress value={pct} className="h-1.5 bg-white/10" />
+                <Progress value={pct} className="h-1.5 bg-foreground/10" />
             </div>
 
             {/* ── Step 0: How to Fill ──────────────────────────────── */}
@@ -261,12 +267,12 @@ export default function SubmitComplaintPage() {
                             onClick={() => setFillMode("manual")}
                             className={`group flex flex-col items-center gap-4 rounded-2xl border-2 p-8 text-center transition-all duration-200 ${fillMode === "manual"
                                 ? "border-[var(--civic-amber)] bg-[var(--civic-amber-muted)] scale-[1.02]"
-                                : "border-white/10 bg-white/3 hover:border-white/25 hover:bg-white/6"
+                                : "border-foreground/10 bg-foreground/3 hover:border-foreground/25 hover:bg-foreground/5"
                                 }`}
                         >
                             <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${fillMode === "manual"
                                 ? "bg-[var(--civic-amber)] text-[var(--navy-deep)]"
-                                : "bg-white/8 text-muted-foreground group-hover:text-foreground"
+                                : "bg-foreground/10 text-muted-foreground group-hover:text-foreground"
                                 }`}>
                                 <PenLine className="w-7 h-7" />
                             </div>
@@ -285,12 +291,12 @@ export default function SubmitComplaintPage() {
                             }}
                             className={`group flex flex-col items-center gap-4 rounded-2xl border-2 p-8 text-center transition-all duration-200 ${fillMode === "manus"
                                 ? "border-purple-500 bg-purple-500/10 scale-[1.02]"
-                                : "border-white/10 bg-white/3 hover:border-purple-500/40 hover:bg-purple-500/5"
+                                : "border-foreground/10 bg-foreground/3 hover:border-purple-500/40 hover:bg-purple-500/5"
                                 }`}
                         >
                             <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${fillMode === "manus"
                                 ? "bg-purple-500 text-white"
-                                : "bg-white/8 text-muted-foreground group-hover:text-purple-400"
+                                : "bg-foreground/10 text-muted-foreground group-hover:text-purple-400"
                                 }`}>
                                 <Sparkles className="w-7 h-7" />
                             </div>
@@ -335,10 +341,10 @@ export default function SubmitComplaintPage() {
                                         onClick={() => setForm((f) => ({ ...f, category: cat.id }))}
                                         className={`flex flex-col items-center gap-2.5 rounded-xl border-2 p-4 text-center transition-all duration-200 ${selected
                                             ? `${cat.border} ${cat.bg} scale-[1.02]`
-                                            : "border-white/10 bg-white/3 hover:bg-white/6 hover:border-white/20"
+                                            : "border-foreground/10 bg-foreground/3 hover:bg-foreground/5 hover:border-foreground/20"
                                             }`}
                                     >
-                                        <div className={`p-2.5 rounded-lg ${selected ? cat.bg : "bg-white/5"}`}>
+                                        <div className={`p-2.5 rounded-lg ${selected ? cat.bg : "bg-foreground/5"}`}>
                                             <Icon className={`w-5 h-5 ${cat.color}`} />
                                         </div>
                                         <span className={`text-xs font-medium leading-tight ${selected ? "text-foreground" : "text-muted-foreground"}`}>
@@ -366,7 +372,7 @@ export default function SubmitComplaintPage() {
                             onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                             placeholder="e.g. Broken streetlight near MG Road for 3 weeks"
                             maxLength={80}
-                            className="bg-white/5 border-white/10 focus:border-[var(--civic-amber)]/50"
+                            className="bg-foreground/5 border-foreground/10 focus:border-[var(--civic-amber)]/50"
                         />
                         <p className="text-xs text-muted-foreground text-right">{form.title.length}/80</p>
                     </div>
@@ -380,7 +386,7 @@ export default function SubmitComplaintPage() {
                             onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                             placeholder="Provide as much detail as possible — how long, impact, any attempts to resolve…"
                             rows={5}
-                            className="bg-white/5 border-white/10 focus:border-[var(--civic-amber)]/50 resize-none"
+                            className="bg-foreground/5 border-foreground/10 focus:border-[var(--civic-amber)]/50 resize-none"
                         />
                         <p className="text-xs text-muted-foreground">{form.description.length} chars · Minimum 20</p>
                     </div>
@@ -396,7 +402,7 @@ export default function SubmitComplaintPage() {
                                     <button
                                         key={opt.id}
                                         onClick={() => setForm((f) => ({ ...f, privacyLevel: opt.id }))}
-                                        className={`w-full flex items-start gap-3 rounded-xl border p-4 text-left transition-all ${selected ? "border-white/20 bg-white/8" : "border-white/8 bg-white/3 hover:bg-white/5"
+                                        className={`w-full flex items-start gap-3 rounded-xl border p-4 text-left transition-all ${selected ? "border-foreground/20 bg-foreground/10" : "border-foreground/10 bg-foreground/5 hover:bg-foreground/8"
                                             }`}
                                     >
                                         <div className={`mt-0.5 shrink-0 ${opt.color}`}>
@@ -427,7 +433,7 @@ export default function SubmitComplaintPage() {
                                 onClick={() => setForm((f) => ({ ...f, isDelegated: !f.isDelegated }))}
                                 className={`w-5 h-5 rounded border-2 shrink-0 flex items-center justify-center transition-all ${form.isDelegated
                                     ? "bg-[var(--civic-amber)] border-[var(--civic-amber)]"
-                                    : "border-white/20 hover:border-white/40"
+                                    : "border-foreground/20 hover:border-foreground/40"
                                     }`}
                             >
                                 {form.isDelegated && <CheckCircle2 className="w-3 h-3 text-[var(--navy-deep)]" />}
@@ -448,7 +454,7 @@ export default function SubmitComplaintPage() {
                                         value={form.delegateName}
                                         onChange={(e) => setForm((f) => ({ ...f, delegateName: e.target.value }))}
                                         placeholder="Full name"
-                                        className="bg-white/5 border-white/10 focus:border-[var(--civic-amber)]/50 h-9 text-sm"
+                                        className="bg-foreground/5 border-foreground/10 focus:border-[var(--civic-amber)]/50 h-9 text-sm"
                                     />
                                 </div>
                                 <div className="space-y-1.5">
@@ -457,7 +463,7 @@ export default function SubmitComplaintPage() {
                                         value={form.delegateRelation}
                                         onChange={(e) => setForm((f) => ({ ...f, delegateRelation: e.target.value }))}
                                         placeholder="e.g. Parent"
-                                        className="bg-white/5 border-white/10 focus:border-[var(--civic-amber)]/50 h-9 text-sm"
+                                        className="bg-foreground/5 border-foreground/10 focus:border-[var(--civic-amber)]/50 h-9 text-sm"
                                     />
                                 </div>
                             </div>
@@ -475,24 +481,47 @@ export default function SubmitComplaintPage() {
                         <Label className="text-sm text-muted-foreground">
                             Address / Area <span className="text-[var(--accountability-red)]">*</span>
                         </Label>
-                        <div className="relative">
-                            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                            <Input
-                                value={form.location}
-                                onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
-                                placeholder="e.g. Near SBI Bank, Sector 14, Ward 6, New Delhi"
-                                className="pl-10 bg-white/5 border-white/10 focus:border-[var(--civic-amber)]/50"
-                            />
+                        <div className="flex gap-2">
+                            <div className="relative flex-1">
+                                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                <Input
+                                    value={form.location}
+                                    onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
+                                    placeholder="e.g. Near SBI Bank, Sector 14, Ward 6, New Delhi"
+                                    className="pl-10 bg-foreground/5 border-foreground/10 focus:border-[var(--civic-amber)]/50"
+                                />
+                            </div>
+                            <Button
+                                variant="outline"
+                                onClick={() => setLocationModalOpen(true)}
+                                className="shrink-0 border-blue-500/30 text-blue-500 hover:bg-blue-500/10 gap-2"
+                            >
+                                <MapIcon className="w-4 h-4" />
+                                <span className="hidden sm:inline">Open Map</span>
+                            </Button>
                         </div>
                         <p className="text-xs text-muted-foreground">
                             Be as specific as possible — landmark, street name, ward number, or pin code.
                         </p>
                     </div>
 
-                    <div className="glass rounded-xl p-4 flex items-center gap-3 text-sm text-muted-foreground">
-                        <MapPin className="w-4 h-4 text-[var(--civic-amber)] shrink-0" />
-                        <p>Interactive map pin coming soon. For now, text-based location is sufficient for routing.</p>
-                    </div>
+                    {/* Inline Map Preview */}
+                    {capturedLatLon ? (
+                        <div className="relative rounded-xl overflow-hidden border border-foreground/10 bg-muted h-[120px] isolate">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                                src={`https://static-maps.yandex.ru/1.x/?ll=${capturedLatLon.lon},${capturedLatLon.lat}&size=400,120&z=15&l=map&pt=${capturedLatLon.lon},${capturedLatLon.lat},pm2rdm`}
+                                alt="Map preview"
+                                className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 ring-1 ring-inset ring-black/10 pointer-events-none rounded-xl" />
+                        </div>
+                    ) : (
+                        <div className="glass rounded-xl p-4 flex items-center gap-3 text-sm text-muted-foreground border border-dashed border-foreground/10">
+                            <MapPin className="w-4 h-4 text-muted-foreground/50 shrink-0" />
+                            <p>No map location pinned yet. Use the <strong className="text-foreground">Open Map</strong> button to pin your exact location via GPS.</p>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -518,7 +547,7 @@ export default function SubmitComplaintPage() {
                         onClick={() => document.getElementById("file-input")?.click()}
                         className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${dragOver
                             ? "border-[var(--civic-amber)] bg-[var(--civic-amber-muted)]"
-                            : "border-white/15 hover:border-white/30 hover:bg-white/3"
+                            : "border-foreground/15 hover:border-foreground/30 hover:bg-foreground/3"
                             }`}
                     >
                         <Upload className={`w-8 h-8 mx-auto mb-3 ${dragOver ? "text-[var(--civic-amber)]" : "text-muted-foreground"}`} />
@@ -539,7 +568,7 @@ export default function SubmitComplaintPage() {
                         <div className="space-y-2">
                             {form.files.map((file, i) => (
                                 <div key={i} className="flex items-center gap-3 glass rounded-lg px-4 py-2.5">
-                                    <div className="w-8 h-8 rounded bg-white/10 flex items-center justify-center shrink-0">
+                                    <div className="w-8 h-8 rounded bg-foreground/10 flex items-center justify-center shrink-0">
                                         {file.type.startsWith("image/") ? (
                                             // eslint-disable-next-line @next/next/no-img-element
                                             <img
@@ -569,7 +598,7 @@ export default function SubmitComplaintPage() {
                     )}
 
                     {/* Summary card before final submit */}
-                    <div className="glass rounded-xl p-5 space-y-3 border border-white/8">
+                    <div className="glass rounded-xl p-5 space-y-3 border border-foreground/10">
                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Summary</p>
                         <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                             <div>
@@ -589,7 +618,7 @@ export default function SubmitComplaintPage() {
                                 <p className="font-medium">{form.location}</p>
                             </div>
                         </div>
-                        <p className="text-[10px] text-muted-foreground border-t border-white/10 pt-3">
+                        <p className="text-[10px] text-muted-foreground border-t border-foreground/10 pt-3">
                             ⏱ SLA: 7 days · You will be notified at each status update.
                         </p>
                     </div>
@@ -602,7 +631,7 @@ export default function SubmitComplaintPage() {
                     variant="outline"
                     onClick={() => setStep((s) => Math.max(0, s - 1))}
                     disabled={step === 0}
-                    className="border-white/10 hover:bg-white/5 gap-2"
+                    className="border-foreground/10 hover:bg-foreground/5 gap-2"
                 >
                     <ChevronLeft className="w-4 h-4" /> Back
                 </Button>
@@ -631,6 +660,15 @@ export default function SubmitComplaintPage() {
                     )
                 )}
             </div>
+            {/* ── Additional Modals ───────────────────────────────── */}
+            <LocationModal
+                open={locationModalOpen}
+                onOpenChange={setLocationModalOpen}
+                onSelectLocation={(loc: string, coords?: { lat: string; lon: string }) => {
+                    setForm((f) => ({ ...f, location: loc }));
+                    if (coords) setCapturedLatLon(coords);
+                }}
+            />
         </div>
     );
 }

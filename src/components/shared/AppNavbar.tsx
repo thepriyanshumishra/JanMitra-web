@@ -104,10 +104,10 @@ export function AppNavbar() {
             <nav
                 className={cn(
                     "w-full max-w-7xl h-16 rounded-[24px] transition-all duration-500 flex items-center justify-between px-4 sm:px-6 relative overflow-hidden",
-                    "glass border border-white/10",
+                    "glass border border-white/10 dark:border-white/5",
                     scrolled
-                        ? "shadow-[0_8px_32px_rgba(0,0,0,0.4)] backdrop-blur-2xl bg-black/40 h-14"
-                        : "shadow-none bg-white/[0.03]"
+                        ? "shadow-xl backdrop-blur-2xl bg-background/80 h-14"
+                        : "shadow-none bg-background/40"
                 )}
             >
                 {/* Visual Accent */}
@@ -124,13 +124,13 @@ export function AppNavbar() {
                         />
                     </div>
                     <div className="flex flex-col">
-                        <span className="font-display text-base sm:text-lg font-black tracking-tight leading-none text-white">JanMitra</span>
+                        <span className="font-display text-base sm:text-lg font-black tracking-tight leading-none text-foreground">JanMitra</span>
                         <span className="text-[10px] font-bold text-[var(--civic-amber)] uppercase tracking-widest opacity-80 mt-0.5">Jan-Kalyan</span>
                     </div>
                 </Link>
 
                 {/* Center Section: Navigation (Desktop) */}
-                <div className="hidden lg:flex items-center gap-1 absolute left-1/2 -translate-x-1/2 bg-white/5 rounded-2xl p-1 border border-white/5">
+                <div className="hidden lg:flex items-center gap-1 absolute left-1/2 -translate-x-1/2 bg-foreground/5 rounded-2xl p-1 border border-foreground/5">
                     {navLinks.map((link) => (
                         <Link
                             key={link.href}
@@ -138,13 +138,13 @@ export function AppNavbar() {
                             className={cn(
                                 "relative px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-300 flex items-center gap-2",
                                 isActive(link.href)
-                                    ? "text-white bg-white/10 shadow-sm"
-                                    : "text-muted-foreground hover:text-white hover:bg-white/5"
+                                    ? "text-foreground bg-foreground/10 shadow-sm"
+                                    : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
                             )}
                         >
                             <span className={cn(
                                 "transition-colors",
-                                isActive(link.href) ? "text-[var(--civic-amber)]" : "text-muted-foreground group-hover:text-white"
+                                isActive(link.href) ? "text-[var(--civic-amber)]" : "text-muted-foreground group-hover:text-foreground"
                             )}>
                                 {link.icon}
                             </span>
@@ -168,7 +168,7 @@ export function AppNavbar() {
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="relative rounded-xl hover:bg-white/5 text-muted-foreground hover:text-white transition-all transform hover:scale-105 hidden sm:flex"
+                                className="relative rounded-xl hover:bg-foreground/5 text-muted-foreground hover:text-foreground transition-all transform hover:scale-105 hidden sm:flex"
                                 aria-label="Notifications"
                             >
                                 <Bell className="w-5 h-5" />
@@ -178,25 +178,25 @@ export function AppNavbar() {
                             {/* User Profile Trigger */}
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <button className="flex items-center gap-2 p-1 pl-1 pr-2 sm:pr-3 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-all outline-none group">
+                                    <button className="flex items-center gap-2 p-1 pl-1 pr-2 sm:pr-3 rounded-full bg-foreground/5 border border-foreground/10 hover:bg-foreground/10 transition-all outline-none group">
                                         <Avatar className="w-7 h-7 sm:w-8 sm:h-8 border-2 border-[var(--civic-amber)]/20 shadow-lg transition-transform group-hover:scale-105">
                                             <div className="w-full h-full bg-gradient-to-br from-[var(--civic-amber)] to-orange-600 flex items-center justify-center text-white font-black text-xs sm:text-sm">
                                                 {user.name?.charAt(0)?.toUpperCase()}
                                             </div>
                                         </Avatar>
                                         <div className="hidden sm:flex flex-col items-start leading-tight">
-                                            <span className="text-xs font-black text-white truncate max-w-[80px]">
+                                            <span className="text-xs font-black text-foreground truncate max-w-[80px]">
                                                 {user.name?.split(" ")[0]}
                                             </span>
                                             <span className="text-[9px] font-bold text-[var(--civic-amber)] uppercase tracking-tighter">
                                                 {ROLE_LABEL[user.role]}
                                             </span>
                                         </div>
-                                        <ChevronDown className="w-3.5 h-3.5 text-muted-foreground group-hover:text-white transition-colors" />
+                                        <ChevronDown className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
                                     </button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-[280px] mt-4 glass border-white/10 p-2 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-                                    <div className="px-4 py-4 mb-2 bg-white/5 rounded-2xl border border-white/5">
+                                <DropdownMenuContent align="end" className="w-[280px] mt-4 bg-popover/95 backdrop-blur-2xl border-foreground/10 p-2 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                                    <div className="px-4 py-4 mb-2 bg-foreground/5 rounded-2xl border border-foreground/5">
                                         <div className="flex items-center gap-3">
                                             <Avatar className="w-12 h-12 border-2 border-[var(--civic-amber)]">
                                                 <div className="w-full h-full bg-gradient-to-br from-[var(--civic-amber)] to-orange-600 flex items-center justify-center text-white font-black text-xl">
@@ -204,7 +204,7 @@ export function AppNavbar() {
                                                 </div>
                                             </Avatar>
                                             <div className="flex-1 min-w-0">
-                                                <h4 className="text-sm font-black truncate text-white">{user.name}</h4>
+                                                <h4 className="text-sm font-black truncate text-foreground">{user.name}</h4>
                                                 <p className="text-[10px] text-muted-foreground truncate">{user.email ?? user.phone}</p>
                                                 <Badge className={cn("mt-1.5 text-[9px] px-1.5 py-0 border", ROLE_COLOR[user.role])}>
                                                     {ROLE_LABEL[user.role]}
@@ -215,7 +215,7 @@ export function AppNavbar() {
 
                                     {/* Quick Links */}
                                     <DropdownMenuLabel className="px-2 text-[10px] font-black uppercase text-muted-foreground tracking-widest py-1">Management</DropdownMenuLabel>
-                                    <DropdownMenuItem className="rounded-xl focus:bg-white/10 cursor-pointer transition-colors py-2.5">
+                                    <DropdownMenuItem className="rounded-xl focus:bg-foreground/10 cursor-pointer transition-colors py-2.5">
                                         <Link href="/profile" className="flex items-center gap-3 w-full">
                                             <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400">
                                                 <User className="w-4 h-4" />
@@ -224,7 +224,7 @@ export function AppNavbar() {
                                         </Link>
                                     </DropdownMenuItem>
 
-                                    <DropdownMenuItem className="rounded-xl focus:bg-white/10 cursor-pointer transition-colors py-2.5">
+                                    <DropdownMenuItem className="rounded-xl focus:bg-foreground/10 cursor-pointer transition-colors py-2.5">
                                         <Link href="/profile/notifications" className="flex items-center gap-3 w-full">
                                             <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500">
                                                 <Bell className="w-4 h-4" />
@@ -233,7 +233,7 @@ export function AppNavbar() {
                                         </Link>
                                     </DropdownMenuItem>
 
-                                    <DropdownMenuSeparator className="bg-white/5 my-1.5" />
+                                    <DropdownMenuSeparator className="bg-foreground/10 my-1.5" />
 
                                     <DropdownMenuItem
                                         onClick={handleSignOut}
@@ -250,7 +250,7 @@ export function AppNavbar() {
                     ) : (
                         <div className="flex items-center gap-2">
                             <Link href="/login" className="hidden sm:block">
-                                <Button variant="ghost" size="sm" className="font-bold text-xs uppercase tracking-wider text-muted-foreground hover:text-white">
+                                <Button variant="ghost" size="sm" className="font-bold text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground">
                                     Sign In
                                 </Button>
                             </Link>
@@ -264,7 +264,7 @@ export function AppNavbar() {
 
                     {/* Mobile Menu Trigger */}
                     <button
-                        className="lg:hidden w-9 h-9 flex items-center justify-center rounded-xl glass border-white/10 text-white"
+                        className="lg:hidden w-9 h-9 flex items-center justify-center rounded-xl glass border-foreground/10 text-foreground"
                         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                     >
                         {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -285,7 +285,7 @@ export function AppNavbar() {
                 {/* Content */}
                 <div
                     className={cn(
-                        "absolute inset-x-4 top-4 glass border border-white/10 rounded-3xl p-6 transition-transform duration-500",
+                        "absolute inset-x-4 top-4 bg-popover/95 backdrop-blur-3xl border border-foreground/10 rounded-3xl p-6 transition-transform duration-500 shadow-2xl",
                         mobileMenuOpen ? "translate-y-0" : "-translate-y-10"
                     )}
                 >
@@ -299,8 +299,8 @@ export function AppNavbar() {
                                 className={cn(
                                     "flex items-center gap-4 px-4 py-4 rounded-2xl border transition-all",
                                     isActive(link.href)
-                                        ? "bg-[var(--civic-amber)]/10 border-[var(--civic-amber)]/20 text-white font-black"
-                                        : "bg-white/5 border-white/5 text-muted-foreground"
+                                        ? "bg-[var(--civic-amber)]/10 border-[var(--civic-amber)]/20 text-foreground font-black"
+                                        : "bg-foreground/5 border-foreground/5 text-muted-foreground"
                                 )}
                             >
                                 <span className={isActive(link.href) ? "text-[var(--civic-amber)]" : ""}>
@@ -310,11 +310,11 @@ export function AppNavbar() {
                             </Link>
                         ))}
 
-                        <div className="h-[1px] bg-white/5 my-2" />
+                        <div className="h-[1px] bg-foreground/5 my-2" />
 
                         {!user && (
                             <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
-                                <Button className="w-full bg-white/5 border border-white/10 text-white font-black h-14 rounded-2xl">
+                                <Button className="w-full bg-foreground/5 border border-foreground/10 text-foreground font-black h-14 rounded-2xl">
                                     Sign In to JanMitra
                                 </Button>
                             </Link>
