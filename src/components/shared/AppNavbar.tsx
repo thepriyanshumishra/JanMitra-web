@@ -18,6 +18,7 @@ import {
 import { useAuth } from "@/features/auth/AuthProvider";
 import { ROLE_HOME } from "@/hooks/useAuth";
 import type { UserRole } from "@/types";
+import { ThemeToggle } from "./ThemeToggle";
 
 const ROLE_LABEL: Record<UserRole, string> = {
     citizen: "Citizen",
@@ -101,6 +102,7 @@ export function AppNavbar() {
 
                 {/* Right side */}
                 <div className="flex items-center gap-3">
+                    <ThemeToggle />
                     {user ? (
                         <>
                             {/* Notifications */}

@@ -126,6 +126,12 @@ function TracePreview() {
   );
 }
 
+import { ThemeToggle } from "@/components/shared/ThemeToggle";
+
+// ... stats / features / traceSteps ...
+
+// ... TracePreview ...
+
 // ─── Page ─────────────────────────────────────────────────────────
 export default function HomePage() {
   return (
@@ -148,6 +154,7 @@ export default function HomePage() {
             <Link href="/about" className="hover:text-foreground transition-colors">About</Link>
           </div>
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <Link href="/login">
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
                 Sign In
