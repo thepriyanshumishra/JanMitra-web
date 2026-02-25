@@ -35,7 +35,7 @@ const ROLE_COLOR: Record<UserRole, string> = {
 };
 
 export function AppNavbar() {
-    const { user, signOut } = useAuth();
+    const { user, signOut, refreshUser } = useAuth();
     const pathname = usePathname();
 
     const isActive = (href: string) => pathname.startsWith(href);
@@ -161,6 +161,9 @@ export function AppNavbar() {
                                                 if (!db) return;
                                                 const { doc, updateDoc } = await import("firebase/firestore");
                                                 await updateDoc(doc(db, "users", user.id), { role: r });
+                                                // Sync AuthProvider cache BEFORE navigating so the
+                                                // layout guard sees the new role immediately.
+                                                await refreshUser();
                                                 window.location.href = ROLE_HOME[r];
                                             }}
                                             className="text-xs py-1.5 cursor-pointer hover:bg-white/5 flex items-center justify-between"
