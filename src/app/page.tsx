@@ -180,48 +180,14 @@ function ActivityFeed() {
   );
 }
 
+import { AppNavbar } from "@/components/shared/AppNavbar";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
-
-// ... stats / features / traceSteps ...
-
-// ... TracePreview ...
 
 // ─── Page ─────────────────────────────────────────────────────────
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-mesh text-foreground">
-      {/* Nav */}
-      <nav className="fixed top-0 inset-x-0 z-50 glass border-b border-[var(--glass-border)]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[var(--civic-amber)] flex items-center justify-center glow-amber">
-              <Shield className="w-4 h-4 text-[var(--navy-deep)]" />
-            </div>
-            <span className="font-display text-lg font-bold tracking-tight">JanMitra</span>
-            <Badge variant="outline" className="text-[10px] border-[var(--civic-amber)]/30 text-[var(--civic-amber)] ml-1">
-              Beta
-            </Badge>
-          </div>
-          <div className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
-            <Link href="/transparency" className="hover:text-foreground transition-colors">Transparency</Link>
-            <Link href="/departments" className="hover:text-foreground transition-colors">Departments</Link>
-            <Link href="/about" className="hover:text-foreground transition-colors">About</Link>
-          </div>
-          <div className="flex items-center gap-3">
-            <ThemeToggle />
-            <Link href="/login">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-                Sign In
-              </Button>
-            </Link>
-            <Link href="/submit">
-              <Button size="sm" className="bg-[var(--civic-amber)] text-[var(--navy-deep)] hover:bg-[var(--civic-amber)]/90 font-semibold glow-amber">
-                File a Complaint
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <AppNavbar />
 
       {/* Hero */}
       <section className="relative pt-32 pb-24 px-4 sm:px-6 lg:px-8 overflow-hidden">

@@ -40,8 +40,9 @@ export function AppNavbar() {
 
     const isActive = (href: string) => pathname.startsWith(href);
 
-    const navLinks =
-        user?.role === "citizen"
+    const navLinks = [
+        { href: "/", label: "Home" },
+        ...(user?.role === "citizen"
             ? [
                 { href: "/dashboard", label: "My Complaints" },
                 { href: "/submit", label: "File Complaint" },
@@ -50,13 +51,11 @@ export function AppNavbar() {
             : user?.role === "officer"
                 ? [
                     { href: "/officer", label: "My Queue" },
-                    { href: "/officer/history", label: "History" },
                     { href: "/transparency", label: "Transparency" },
                 ]
                 : user?.role === "dept_admin"
                     ? [
                         { href: "/admin/dept", label: "Dashboard" },
-                        { href: "/admin/dept/officers", label: "Officers" },
                         { href: "/admin/dept/analytics", label: "Analytics" },
                         { href: "/transparency", label: "Transparency" },
                     ]
@@ -64,12 +63,16 @@ export function AppNavbar() {
                         ? [
                             { href: "/admin/system", label: "Overview" },
                             { href: "/admin/system/departments", label: "Departments" },
-                            { href: "/admin/system/users", label: "Users" },
                             { href: "/transparency", label: "Transparency" },
                         ]
-                        : [];
+                        : [
+                            { href: "/transparency", label: "Transparency" },
+                            { href: "/about", label: "About" },
+                        ])
+    ];
 
-    const home = user ? ROLE_HOME[user.role] : "/";
+    // Logo always goes home now for better platform navigation
+    const home = "/";
 
     return (
         <nav className="fixed top-0 inset-x-0 z-50 glass border-b border-[var(--glass-border)]">
