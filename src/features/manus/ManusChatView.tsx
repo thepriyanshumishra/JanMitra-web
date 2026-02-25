@@ -13,10 +13,22 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+// Browser SpeechRecognition types (not in default TypeScript DOM lib for all versions)
+interface ISpeechRecognition {
+    continuous: boolean;
+    interimResults: boolean;
+    lang: string;
+    start: () => void;
+    stop: () => void;
+    onresult: ((event: { results: { [i: number]: { [i: number]: { transcript: string } } } }) => void) | null;
+    onerror: ((event: { error: string }) => void) | null;
+    onend: (() => void) | null;
+}
+
 declare global {
     interface Window {
-        SpeechRecognition: any;
-        webkitSpeechRecognition: any;
+        SpeechRecognition?: new () => ISpeechRecognition;
+        webkitSpeechRecognition?: new () => ISpeechRecognition;
     }
 }
 
@@ -59,7 +71,7 @@ export function ManusChatView({ onFill }: ManusChatViewProps) {
     const [isListening, setIsListening] = useState(false);
     const [selectedLang, setSelectedLang] = useState(SUPPORTED_LANGUAGES[0]);
     const bottomRef = useRef<HTMLDivElement>(null);
-    const recognitionRef = useRef<any>(null);
+    const recognitionRef = useRef<ISpeechRecognition | null>(null);
 
     // Initial persistence and state
     useEffect(() => {
@@ -98,13 +110,13 @@ export function ManusChatView({ onFill }: ManusChatViewProps) {
                 recognitionRef.current.continuous = false;
                 recognitionRef.current.interimResults = false;
 
-                recognitionRef.current.onresult = (event: any) => {
+                recognitionRef.current.onresult = (event: { results: { [i: number]: { [i: number]: { transcript: string } } } }) => {
                     const transcript = event.results[0][0].transcript;
                     setInput((prev) => prev + (prev ? " " : "") + transcript);
                     setIsListening(false);
                 };
 
-                recognitionRef.current.onerror = (event: any) => {
+                recognitionRef.current.onerror = (event: { error: string }) => {
                     console.error("Speech recognition error:", event.error);
                     setIsListening(false);
                     if (event.error !== "no-speech") {
@@ -208,7 +220,7 @@ export function ManusChatView({ onFill }: ManusChatViewProps) {
                             <Sparkles className="w-6 h-6 text-purple-400" />
                         </div>
                         <h1 className="text-2xl sm:text-3xl font-display font-bold text-center tracking-tight">
-                            What's on your mind today?
+                            What&apos;s on your mind today?
                         </h1>
                         <p className="text-muted-foreground mt-3 text-sm text-center max-w-sm">
                             I can help you file a complaint in seconds. Just describe the problem in plain language.

@@ -19,6 +19,7 @@ const ComplaintHeatmap = dynamic(
 
 interface Grievance {
     id: string;
+    title: string;
     category: string;
     status: string;
     slaStatus: string;

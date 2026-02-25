@@ -181,9 +181,7 @@ function ActivityFeed() {
 }
 
 import { AppNavbar } from "@/components/shared/AppNavbar";
-import { ThemeToggle } from "@/components/shared/ThemeToggle";
 
-// ─── Page ─────────────────────────────────────────────────────────
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-mesh text-foreground">

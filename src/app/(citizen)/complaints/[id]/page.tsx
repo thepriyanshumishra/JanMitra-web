@@ -356,7 +356,7 @@ export default function ComplaintDetailPage() {
                                     ))}
                                 </div>
                                 {grievance.feedback.comment && (
-                                    <p className="text-sm text-foreground/80 italic">"{grievance.feedback.comment}"</p>
+                                    <p className="text-sm text-foreground/80 italic">&ldquo;{grievance.feedback.comment}&rdquo;</p>
                                 )}
                             </>
                         ) : (

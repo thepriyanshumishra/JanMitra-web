@@ -308,7 +308,7 @@ export default function SubmitComplaintPage() {
                         <div className="glass rounded-xl p-4 flex items-start gap-3 border border-purple-500/20">
                             <Sparkles className="w-4 h-4 text-purple-400 mt-0.5 shrink-0" />
                             <p className="text-sm text-muted-foreground">
-                                You've selected <span className="text-purple-400 font-semibold">Manus AI</span>.
+                                You&apos;ve selected <span className="text-purple-400 font-semibold">Manus AI</span>.
                                 Click <strong>Next</strong> to start the conversation.
                             </p>
                         </div>

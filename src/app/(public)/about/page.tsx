@@ -36,7 +36,7 @@ export default function AboutPage() {
                     <h2 className="text-3xl font-display font-bold">Why JanMitra?</h2>
                     <p className="text-lg text-muted-foreground max-w-3xl mx-auto leading-relaxed">
                         In a traditional system, a complaint is a piece of paper that can be lost. In JanMitra, a complaint is an <strong>immutable event</strong>.
-                        We don't just track the 'status'; we track the <strong>flow of responsibility</strong>.
+                        We don&apos;t just track the &apos;status&apos;; we track the <strong>flow of responsibility</strong>.
                         If a department fails, the system makes it visible. If an officer succeeds, the data proves their competence.
                     </p>
                 </div>

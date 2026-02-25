@@ -1,39 +1,53 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 
 // Fix Leaflet marker icons in Next.js
 import L from "leaflet";
-delete (L.Icon.Default.prototype as any)._getIconUrl;
+delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
 L.Icon.Default.mergeOptions({
     iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
     iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
     shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
+interface Complaint {
+    id: string;
+    title: string;
+    category: string;
+    slaStatus: string;
+    privacyLevel: string;
+}
+
 interface HeatmapProps {
-    complaints: any[];
+    complaints: Complaint[];
 }
 
 // Bhopal approx center
 const CENTER: [number, number] = [23.2599, 77.4126];
 
-export default function ComplaintHeatmap({ complaints }: HeatmapProps) {
-    // Generate dummy coordinates around Bhopal for MVP (since we don't capture actual GPS yet)
-    // Only map public complaints
-    const publicComplaints = complaints.filter(c => c.privacyLevel === "public");
+// Pre-seed deterministic offsets so they don't change on every render
+function seededRandom(seed: number): number {
+    const x = Math.sin(seed + 1) * 10000;
+    return x - Math.floor(x);
+}
 
-    const plottedComplaints = publicComplaints.map(c => {
-        // Random offset from center to simulate city spread
-        const latOffset = (Math.random() - 0.5) * 0.1;
-        const lngOffset = (Math.random() - 0.5) * 0.1;
-        return {
-            ...c,
-            position: [CENTER[0] + latOffset, CENTER[1] + lngOffset] as [number, number],
-        };
-    });
+export default function ComplaintHeatmap({ complaints }: HeatmapProps) {
+    const plottedComplaints = useMemo(() => {
+        return complaints
+            .filter(c => c.privacyLevel === "public")
+            .map((c, i) => {
+                // Deterministic offset using index as seed so it doesn't change on re-render
+                const latOffset = (seededRandom(i * 7) - 0.5) * 0.1;
+                const lngOffset = (seededRandom(i * 13) - 0.5) * 0.1;
+                return {
+                    ...c,
+                    position: [CENTER[0] + latOffset, CENTER[1] + lngOffset] as [number, number],
+                };
+            });
+    }, [complaints]);
 
     return (
         <div className="w-full h-full min-h-[400px] rounded-2xl overflow-hidden glass relative z-0 border border-white/5">

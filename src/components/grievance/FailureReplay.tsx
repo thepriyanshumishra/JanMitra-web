@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Play, Pause, RotateCcw, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,14 +18,22 @@ export function FailureReplay({ grievanceId, slaDeadlineAt }: FailureReplayProps
     const [started, setStarted] = useState(false);
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-    // Find where SLA breach falls among events
-    const slaDeadline = new Date(slaDeadlineAt).getTime();
-    const slaBreachIndex = events.findIndex(
-        (e) => new Date(e.timestamp).getTime() > slaDeadline
-    );
-    const slaWasBreached =
-        slaBreachIndex !== -1 ||
-        (events.length > 0 && Date.now() > slaDeadline);
+    // Capture current timestamp once via lazy initializer (avoids impure function in render)
+    const [now] = useState(() => Date.now());
+
+    const { slaDeadline, slaBreachIndex, slaWasBreached } = useMemo(() => {
+        const deadline = new Date(slaDeadlineAt).getTime();
+        const breachIndex = events.findIndex(
+            (e) => new Date(e.timestamp).getTime() > deadline
+        );
+        return {
+            slaDeadline: deadline,
+            slaBreachIndex: breachIndex,
+            slaWasBreached:
+                breachIndex !== -1 ||
+                (events.length > 0 && now > 0 && now > deadline),
+        };
+    }, [events, slaDeadlineAt, now]);
 
     function startReplay() {
         setVisible(0);
