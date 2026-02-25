@@ -1,0 +1,21 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Evidence files uploaded by citizens or officers
+    match /evidence/{grievanceId}/{allPaths=**} {
+      // Any authenticated user can read (officers reviewing, citizens checking their own)
+      allow read: if request.auth != null;
+
+      // Any authenticated user can upload — max 10 MB, allowed MIME types only
+      allow write: if request.auth != null
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*|application/pdf|video/.*');
+    }
+
+    // Block all other paths by default
+    match /{allOtherPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

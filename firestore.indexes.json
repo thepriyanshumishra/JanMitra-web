@@ -1,0 +1,87 @@
+{
+    "indexes": [
+        {
+            "collectionGroup": "grievances",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "citizenId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "createdAt",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "grievances",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "departmentId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "status",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "createdAt",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "grievances",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "status",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "slaStatus",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "createdAt",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "grievances",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "privacyLevel",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "createdAt",
+                    "order": "DESCENDING"
+                }
+            ]
+        },
+        {
+            "collectionGroup": "grievances",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "departmentId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "slaStatus",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "createdAt",
+                    "order": "DESCENDING"
+                }
+            ]
+        }
+    ],
+    "fieldOverrides": []
+}
