@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isSignInWithEmailLink, signInWithEmailLink } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import { getRedirectResult } from "@/features/auth/authHelpers";
 import { Loader2, Shield, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -15,23 +16,35 @@ export default function LoginCallbackPage() {
         async function completeSignIn() {
             if (!auth) return;
 
+            // ── 1. Handle Google Redirect result ────────────────────
+            try {
+                const result = await getRedirectResult(auth);
+                if (result?.user) {
+                    toast.success("Welcome back!");
+                    router.push("/dashboard");
+                    return;
+                }
+            } catch (err: unknown) {
+                const msg = err instanceof Error ? err.message : "Google sign-in failed";
+                setError(msg);
+                return;
+            }
+
+            // ── 2. Handle Passwordless Email link ────────────────────
             if (isSignInWithEmailLink(auth, window.location.href)) {
                 let email = window.localStorage.getItem("emailForSignIn");
-
-                // If email is missing (e.g. user opened link on different device)
                 if (!email) {
                     email = window.prompt("Please provide your email for confirmation");
                 }
-
                 if (email) {
                     try {
                         await signInWithEmailLink(auth, email, window.location.href);
                         window.localStorage.removeItem("emailForSignIn");
                         toast.success("Successfully signed in!");
                         router.push("/dashboard");
-                    } catch (err: any) {
-                        console.error("Auth error:", err);
-                        setError(err.message || "Failed to sign in. The link may have expired.");
+                    } catch (err: unknown) {
+                        const msg = err instanceof Error ? err.message : "Link expired or invalid.";
+                        setError(msg);
                     }
                 }
             } else {

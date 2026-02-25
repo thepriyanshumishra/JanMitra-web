@@ -6,7 +6,8 @@ import {
     updateProfile,
     sendPasswordResetEmail,
     GoogleAuthProvider,
-    signInWithPopup,
+    signInWithRedirect,
+    getRedirectResult,
     sendSignInLinkToEmail,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
@@ -39,8 +40,11 @@ export async function resetPassword(email: string) {
 export async function loginWithGoogle() {
     if (!auth) throw new Error("Auth not initialized");
     const provider = new GoogleAuthProvider();
-    return signInWithPopup(auth, provider);
+    // Use redirect (not popup) to avoid COOP browser restrictions
+    return signInWithRedirect(auth, provider);
 }
+
+export { getRedirectResult };
 
 // ─── Passwordless Email Auth ────────────────────────────────────
 
