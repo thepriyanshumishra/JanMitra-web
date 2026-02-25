@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Shield, Bell, LogOut, User, ChevronDown, CheckCircle2 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,12 @@ const ROLE_COLOR: Record<UserRole, string> = {
 export function AppNavbar() {
     const { user, signOut, refreshUser } = useAuth();
     const pathname = usePathname();
+    const router = useRouter();
+
+    const handleSignOut = async () => {
+        await signOut();
+        router.push("/");
+    };
 
     const isActive = (href: string) => pathname.startsWith(href);
 
@@ -187,7 +193,7 @@ export function AppNavbar() {
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator className="bg-white/10" />
                                     <DropdownMenuItem
-                                        onClick={signOut}
+                                        onClick={handleSignOut}
                                         className="cursor-pointer text-[var(--accountability-red)] hover:bg-[var(--accountability-red-muted)] hover:text-[var(--accountability-red)] gap-2"
                                     >
                                         <LogOut className="w-4 h-4" /> Sign out
