@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Shield, Bell, LogOut, User, ChevronDown, CheckCircle2 } from "lucide-react";
+import { Bell, LogOut, User, ChevronDown, CheckCircle2 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

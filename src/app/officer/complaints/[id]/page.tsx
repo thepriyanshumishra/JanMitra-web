@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -10,7 +10,8 @@ import {
 import { db } from "@/lib/firebase";
 import {
     ArrowLeft, CheckCircle2, AlertTriangle, XCircle,
-    RefreshCw, FileEdit, Loader2, ChevronDown
+    RefreshCw, FileEdit, Loader2, ChevronDown, Upload,
+    Paperclip, X, Image
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,6 +24,7 @@ import { toast } from "sonner";
 import { SLACountdown } from "@/components/grievance/SLACountdown";
 import { EventTimeline } from "@/components/grievance/EventTimeline";
 import { useAuth } from "@/features/auth/AuthProvider";
+import { uploadEvidenceFile } from "@/lib/uploadFile";
 
 interface GrievanceDoc {
     id: string;
@@ -36,6 +38,7 @@ interface GrievanceDoc {
     slaDeadlineAt: string;
     citizenId: string;
     createdAt: string;
+    evidenceUrls?: string[];
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -43,6 +46,16 @@ const STATUS_LABELS: Record<string, string> = {
     acknowledged: "Acknowledged", in_progress: "In Progress",
     escalated: "Escalated", closed: "Resolved", reopened: "Reopened",
 };
+
+const DELAY_REASONS = [
+    "Technical / Equipment Issue",
+    "Awaiting Materials / Resources",
+    "Pending Approval / Clearance",
+    "Weather / Force Majeure",
+    "Inter-department Coordination",
+    "High Priority Task Conflict",
+    "Other",
+];
 
 export default function OfficerComplaintPage() {
     const params = useParams<{ id: string }>();
@@ -52,6 +65,17 @@ export default function OfficerComplaintPage() {
     const [actionLoading, setActionLoading] = useState(false);
     const [message, setMessage] = useState("");
     const [selectedStatus, setSelectedStatus] = useState("in_progress");
+
+    // Delay explanation
+    const [delayReason, setDelayReason] = useState(DELAY_REASONS[0]);
+    const [delayDetails, setDelayDetails] = useState("");
+    const [showDelayForm, setShowDelayForm] = useState(false);
+
+    // Proof upload
+    const [proofFile, setProofFile] = useState<File | null>(null);
+    const [proofUploading, setProofUploading] = useState(false);
+    const [proofProgress, setProofProgress] = useState(0);
+    const proofInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (!db || !params.id) return;
@@ -71,8 +95,6 @@ export default function OfficerComplaintPage() {
         setActionLoading(true);
         try {
             const now = new Date().toISOString();
-
-            // Write event
             await addDoc(collection(db, "grievances", grievance.id, "events"), {
                 type,
                 actorId: user.id,
@@ -84,17 +106,10 @@ export default function OfficerComplaintPage() {
                     ...extra,
                 },
             });
-
-            // Update grievance doc
-            const update: Record<string, unknown> = {
-                status: newStatus,
-                updatedAt: now,
-            };
+            const update: Record<string, unknown> = { status: newStatus, updatedAt: now };
             if (newSlaStatus) update.slaStatus = newSlaStatus;
             if (newStatus === "closed") update.closedAt = now;
-
             await updateDoc(doc(db, "grievances", grievance.id), update);
-
             toast.success(`Action recorded: ${type.replace(/_/g, " ")}`);
             setMessage("");
         } catch (err) {
@@ -103,6 +118,50 @@ export default function OfficerComplaintPage() {
         } finally {
             setActionLoading(false);
         }
+    }
+
+    async function handleUploadProof() {
+        if (!db || !grievance || !user || !proofFile) return;
+        setProofUploading(true);
+        setProofProgress(0);
+        try {
+            const url = await uploadEvidenceFile(
+                grievance.id,
+                proofFile,
+                (p) => setProofProgress(p)
+            );
+            const now = new Date().toISOString();
+            await addDoc(collection(db, "grievances", grievance.id, "events"), {
+                type: "PROOF_UPLOADED",
+                actorId: user.id,
+                actorName: user.name ?? "Officer",
+                timestamp: now,
+                payload: { proofUrl: url, fileName: proofFile.name },
+            });
+            // Store proof URL on the grievance doc itself too
+            await updateDoc(doc(db, "grievances", grievance.id), {
+                proofUrls: [...(grievance.evidenceUrls ?? []), url],
+                updatedAt: now,
+            });
+            toast.success("Proof uploaded and recorded on the event log.");
+            setProofFile(null);
+        } catch (err) {
+            console.error(err);
+            toast.error("Proof upload failed. Please try again.");
+        } finally {
+            setProofUploading(false);
+            setProofProgress(0);
+        }
+    }
+
+    async function handleDelayExplanation() {
+        if (!grievance || !user) return;
+        await performAction("DELAY_EXPLAINED", grievance.status, undefined, {
+            delayReason,
+            details: delayDetails,
+        });
+        setShowDelayForm(false);
+        setDelayDetails("");
     }
 
     if (loading) return (
@@ -156,6 +215,24 @@ export default function OfficerComplaintPage() {
                         )}
                     </div>
 
+                    {/* Citizen Evidence */}
+                    {grievance.evidenceUrls && grievance.evidenceUrls.length > 0 && (
+                        <div className="glass rounded-2xl p-6">
+                            <h2 className="text-sm font-display font-semibold mb-4 flex items-center gap-2">
+                                <Paperclip className="w-4 h-4 text-[var(--civic-amber)]" /> Citizen Evidence ({grievance.evidenceUrls.length})
+                            </h2>
+                            <div className="flex flex-wrap gap-3">
+                                {grievance.evidenceUrls.map((url, i) => (
+                                    <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                                        className="glass border border-white/10 rounded-xl p-3 flex items-center gap-2 hover:bg-white/5 transition-colors text-xs text-muted-foreground">
+                                        <Image className="w-4 h-4 text-[var(--civic-amber)]" />
+                                        File {i + 1}
+                                    </a>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     {/* Timeline */}
                     <div className="glass rounded-2xl p-6">
                         <h2 className="text-sm font-display font-semibold mb-5">Event Timeline</h2>
@@ -175,14 +252,14 @@ export default function OfficerComplaintPage() {
                             </div>
                         ) : (
                             <>
-                                {/* Optional message */}
+                                {/* Optional note */}
                                 <div className="space-y-2">
-                                    <Label className="text-xs text-muted-foreground">Update message (optional)</Label>
+                                    <Label className="text-xs text-muted-foreground">Public update note (optional)</Label>
                                     <Textarea
                                         value={message}
                                         onChange={(e) => setMessage(e.target.value)}
-                                        placeholder="Add a note for the citizen…"
-                                        rows={3}
+                                        placeholder="Add a note visible to the citizen…"
+                                        rows={2}
                                         className="bg-white/5 border-white/10 focus:border-[var(--civic-amber)]/50 text-sm resize-none"
                                     />
                                 </div>
@@ -229,20 +306,88 @@ export default function OfficerComplaintPage() {
                                         </Button>
                                     </div>
 
-                                    {/* Explain Delay */}
-                                    <Button
-                                        onClick={() => {
-                                            if (!message.trim()) { toast.error("Please add a delay reason in the message field."); return; }
-                                            performAction("DELAY_EXPLAINED", grievance.status, undefined, { reason: message });
-                                        }}
-                                        disabled={actionLoading}
-                                        variant="outline"
-                                        className="w-full border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 gap-2 text-sm"
-                                    >
-                                        <FileEdit className="w-3.5 h-3.5" /> Explain Delay
-                                    </Button>
+                                    {/* ── Upload Proof ── */}
+                                    <div className="space-y-2 pt-1 border-t border-white/5">
+                                        <Label className="text-xs text-muted-foreground">Upload Resolution Proof</Label>
+                                        <input
+                                            ref={proofInputRef}
+                                            type="file"
+                                            accept="image/*,application/pdf"
+                                            className="hidden"
+                                            onChange={e => setProofFile(e.target.files?.[0] ?? null)}
+                                        />
+                                        {proofFile ? (
+                                            <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-lg p-2.5">
+                                                <Paperclip className="w-4 h-4 text-[var(--civic-amber)] shrink-0" />
+                                                <span className="text-xs flex-1 truncate">{proofFile.name}</span>
+                                                <button onClick={() => setProofFile(null)} className="text-muted-foreground hover:text-foreground">
+                                                    <X className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <Button
+                                                variant="outline"
+                                                onClick={() => proofInputRef.current?.click()}
+                                                className="w-full border-white/10 hover:bg-white/5 gap-2 text-sm border-dashed"
+                                            >
+                                                <Upload className="w-3.5 h-3.5" /> Choose File
+                                            </Button>
+                                        )}
+                                        {proofFile && (
+                                            <Button
+                                                onClick={handleUploadProof}
+                                                disabled={proofUploading}
+                                                className="w-full bg-blue-600 hover:bg-blue-600/90 text-white font-bold gap-2 text-sm"
+                                            >
+                                                {proofUploading
+                                                    ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Uploading {proofProgress}%</>
+                                                    : <><Upload className="w-3.5 h-3.5" /> Submit Proof</>
+                                                }
+                                            </Button>
+                                        )}
+                                    </div>
 
-                                    {/* Escalate */}
+                                    {/* ── Explain Delay ── */}
+                                    <div className="pt-1 border-t border-white/5">
+                                        {showDelayForm ? (
+                                            <div className="space-y-3 bg-yellow-500/5 border border-yellow-500/20 rounded-xl p-3">
+                                                <Label className="text-xs text-yellow-400 font-semibold">Delay Explanation</Label>
+                                                <select
+                                                    value={delayReason}
+                                                    onChange={e => setDelayReason(e.target.value)}
+                                                    className="w-full text-xs bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-foreground"
+                                                >
+                                                    {DELAY_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                                                </select>
+                                                <Textarea
+                                                    value={delayDetails}
+                                                    onChange={e => setDelayDetails(e.target.value)}
+                                                    placeholder="Additional context (optional)…"
+                                                    rows={2}
+                                                    className="bg-white/5 border-white/10 text-sm resize-none"
+                                                />
+                                                <div className="flex gap-2">
+                                                    <Button size="sm" variant="outline"
+                                                        onClick={() => setShowDelayForm(false)}
+                                                        className="flex-1 border-white/10 text-xs">Cancel</Button>
+                                                    <Button size="sm"
+                                                        onClick={handleDelayExplanation}
+                                                        disabled={actionLoading}
+                                                        className="flex-1 bg-yellow-500 text-black hover:bg-yellow-400 font-bold text-xs">Submit</Button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <Button
+                                                onClick={() => setShowDelayForm(true)}
+                                                variant="outline"
+                                                className="w-full border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 gap-2 text-sm"
+                                            >
+                                                <FileEdit className="w-3.5 h-3.5" /> Explain Delay
+                                            </Button>
+                                        )}
+                                    </div>
+
+                                    {/* ── Escalate ── */}
                                     <Button
                                         onClick={() => {
                                             if (!confirm("Escalate this complaint? This will be visible to the citizen and dept admin.")) return;
@@ -255,7 +400,7 @@ export default function OfficerComplaintPage() {
                                         <AlertTriangle className="w-3.5 h-3.5" /> Escalate
                                     </Button>
 
-                                    {/* Resolve */}
+                                    {/* ── Mark Resolved ── */}
                                     <Button
                                         onClick={() => {
                                             if (!confirm("Mark this complaint as resolved and closed?")) return;

@@ -1,0 +1,112 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Helper functions ───────────────────────────────────────────
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    function hasRole(role) {
+      return isAuthenticated() && request.auth.token.role == role;
+    }
+
+    function isOfficer() {
+      return hasRole('officer') || hasRole('dept_admin') || hasRole('system_admin');
+    }
+
+    function isAdmin() {
+      return hasRole('dept_admin') || hasRole('system_admin');
+    }
+
+    function isSystemAdmin() {
+      return hasRole('system_admin');
+    }
+
+    // ─── users/{uid} ────────────────────────────────────────────────
+    // Read: own doc only. Writes: Admin SDK only (no client writes).
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if false; // All writes through Admin SDK only
+    }
+
+    // ─── departments/{deptId} ───────────────────────────────────────
+    // Public read. System admin write via Admin SDK only.
+    match /departments/{deptId} {
+      allow read: if true;
+      allow write: if false; // API route enforces system_admin
+    }
+
+    // ─── departmentStats/{deptId} ───────────────────────────────────
+    // Public read. Writes only from server (cron/Admin SDK).
+    match /departmentStats/{deptId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ─── grievances/{grievanceId} ───────────────────────────────────
+    match /grievances/{grievanceId} {
+      // Citizens: read their own complaints
+      // Officers/Admins: read all (department-level filtering done in API)
+      // Public: read-only if privacyLevel == "public"
+      allow read: if
+        isOwner(resource.data.citizenId) ||
+        isOfficer() ||
+        resource.data.privacyLevel == 'public';
+
+      // Only the server (Admin SDK) may create/update grievances
+      allow write: if false;
+
+      // ── Events subcollection (append-only) ───────────────────────
+      match /events/{eventId} {
+        // Authenticated users can read events in their own complaints
+        // Officers can read all events
+        allow read: if
+          isAuthenticated() &&
+          (
+            isOfficer() ||
+            get(/databases/$(database)/documents/grievances/$(grievanceId)).data.citizenId == request.auth.uid
+          );
+
+        // No client-side writes — events are only written by the API routes
+        allow write: if false;
+      }
+    }
+
+    // ─── supportSignals/{signalId} ──────────────────────────────────
+    // Citizens can add/remove their own support signal.
+    // One per (grievanceId, citizenId) pair — enforced at API level.
+    match /supportSignals/{signalId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.citizenId;
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.citizenId;
+      allow update: if false;
+    }
+
+    // ─── delayExplanations/{explanationId} ─────────────────────────
+    // Officers can create. Citizens can read explanations for their complaints.
+    match /delayExplanations/{explanationId} {
+      allow read: if
+        isOwner(
+          get(/databases/$(database)/documents/grievances/$(resource.data.grievanceId)).data.citizenId
+        ) || isOfficer();
+      allow create: if isOfficer();
+      allow update, delete: if false;
+    }
+
+    // ─── citizenFeedback/{feedbackId} ──────────────────────────────
+    // Citizens can create feedback on their own closed complaints.
+    // Officers and admins can read all feedback.
+    match /citizenFeedback/{feedbackId} {
+      allow read: if isOwner(resource.data.citizenId) || isOfficer();
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.citizenId;
+      allow update, delete: if false;
+    }
+
+  }
+}
