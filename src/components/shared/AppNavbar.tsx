@@ -116,6 +116,7 @@ export function AppNavbar() {
                             <Button
                                 variant="ghost"
                                 size="icon"
+                                aria-label="View notifications"
                                 className="relative text-muted-foreground hover:text-foreground"
                             >
                                 <Bell className="w-4 h-4" />

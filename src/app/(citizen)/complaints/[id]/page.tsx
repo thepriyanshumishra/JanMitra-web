@@ -234,6 +234,7 @@ export default function ComplaintDetailPage() {
                         <Button
                             variant="ghost"
                             size="icon"
+                            aria-label="Copy complaint link"
                             className="h-8 w-8 text-muted-foreground hover:text-foreground"
                             onClick={() => {
                                 navigator.clipboard.writeText(window.location.href);
@@ -367,7 +368,7 @@ export default function ComplaintDetailPage() {
                                 </div>
                                 <div className="flex gap-2">
                                     {[1, 2, 3, 4, 5].map((s) => (
-                                        <button key={s} onClick={() => setRating(s)} className="focus:outline-none transition-transform hover:scale-110">
+                                        <button key={s} onClick={() => setRating(s)} aria-label={`Rate ${s} star${s > 1 ? 's' : ''}`} className="focus:outline-none transition-transform hover:scale-110">
                                             <Star className={`w-7 h-7 ${rating >= s ? "fill-[var(--civic-amber)] text-[var(--civic-amber)]" : "text-white/20 hover:text-white/40"}`} />
                                         </button>
                                     ))}
