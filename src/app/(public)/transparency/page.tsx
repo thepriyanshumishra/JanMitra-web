@@ -182,8 +182,8 @@ export default function TransparencyDashboard() {
                             ].map((dept) => (
                                 <div key={dept.name} className="flex items-center gap-4 bg-white/[0.02] p-3 rounded-xl border border-white/5 hover:bg-white/5 transition-colors">
                                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${dept.rank === 1 ? 'bg-yellow-500/20 text-yellow-500' :
-                                            dept.rank === 2 ? 'bg-gray-300/20 text-gray-300' :
-                                                dept.rank === 3 ? 'bg-amber-700/20 text-amber-600' : 'bg-white/5'
+                                        dept.rank === 2 ? 'bg-gray-300/20 text-gray-300' :
+                                            dept.rank === 3 ? 'bg-amber-700/20 text-amber-600' : 'bg-white/5'
                                         }`}>
                                         #{dept.rank}
                                     </div>

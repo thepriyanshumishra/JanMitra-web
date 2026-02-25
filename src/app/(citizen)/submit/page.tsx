@@ -20,7 +20,7 @@ import { db } from "@/lib/firebase";
 import { uploadMultipleFiles } from "@/lib/uploadFile";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useRequireAuth } from "@/hooks/useAuth";
-import { ManusDrawer } from "@/features/manus/ManusDrawer";
+import { ManusChatView } from "@/features/manus/ManusChatView";
 
 // ─── Category data ────────────────────────────────────────────────
 const CATEGORIES = [
@@ -87,8 +87,9 @@ const INITIAL_FORM: FormData = {
     files: [],
 };
 
-// Step 0 = How to Fill, Steps 1-4 = the actual form
-const STEPS = ["How to Fill", "Category", "Details", "Location", "Evidence"];
+// Step labels change depending on mode
+const STEPS_MANUAL = ["How to Fill", "Category", "Details", "Location", "Evidence"];
+const STEPS_AI = ["How to Fill", "Manus Chat", "Review", "Location", "Evidence"];
 
 // ─── Component ────────────────────────────────────────────────────
 export default function SubmitComplaintPage() {
@@ -101,30 +102,6 @@ export default function SubmitComplaintPage() {
     const [form, setForm] = useState<FormData>(INITIAL_FORM);
     const [submitting, setSubmitting] = useState(false);
     const [dragOver, setDragOver] = useState(false);
-    const manusOpenRef = useRef<(() => void) | null>(null);
-
-    if (authLoading || !user) {
-        return (
-            <div className="min-h-[80vh] flex items-center justify-center">
-                <Loader2 className="w-6 h-6 animate-spin text-[var(--civic-amber)]" />
-            </div>
-        );
-    }
-
-    const pct = Math.round(((step + 1) / STEPS.length) * 100);
-
-    // Manus auto-fill handler
-    function handleManuseFill(data: { category: string; title: string; description: string; location: string }) {
-        setForm((f) => ({
-            ...f,
-            category: data.category || f.category,
-            title: data.title || f.title,
-            description: data.description || f.description,
-            location: data.location || f.location,
-        }));
-        // After Manus fills, jump straight to details step
-        setStep(2);
-    }
 
     // File handling
     const addFiles = useCallback((newFiles: FileList | File[]) => {
@@ -140,6 +117,31 @@ export default function SubmitComplaintPage() {
         });
     }, []);
 
+    if (authLoading || !user) {
+        return (
+            <div className="min-h-[80vh] flex items-center justify-center">
+                <Loader2 className="w-6 h-6 animate-spin text-[var(--civic-amber)]" />
+            </div>
+        );
+    }
+
+    const steps = fillMode === "manus" ? STEPS_AI : STEPS_MANUAL;
+    const pct = Math.round(((step + 1) / steps.length) * 100);
+
+    // Manus auto-fill handler
+    function handleManuseFill(data: { category: string; title: string; description: string; location: string }) {
+        setForm((f) => ({
+            ...f,
+            category: data.category || f.category,
+            title: data.title || f.title,
+            description: data.description || f.description,
+            location: data.location || f.location,
+        }));
+        // After Manus fills, jump to Step 2 (Review)
+        setStep(2);
+    }
+
+
     function removeFile(index: number) {
         setForm((f) => ({ ...f, files: f.files.filter((_, i) => i !== index) }));
     }
@@ -147,7 +149,10 @@ export default function SubmitComplaintPage() {
     // Validation per step
     function canProceed(): boolean {
         if (step === 0) return fillMode !== "";
-        if (step === 1) return !!form.category;
+        if (step === 1) {
+            if (fillMode === "manus") return false; // Manus chat step has its own "Proceed" button
+            return !!form.category;
+        }
         if (step === 2) return form.title.trim().length >= 5 && form.description.trim().length >= 20;
         if (step === 3) return form.location.trim().length >= 3;
         return true; // evidence is optional
@@ -220,17 +225,17 @@ export default function SubmitComplaintPage() {
             {/* Stepper */}
             <div className="space-y-3">
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    {STEPS.map((s, i) => (
+                    {steps.map((s, i) => (
                         <div
                             key={s}
                             className={`flex items-center gap-1.5 ${i <= step ? "text-foreground" : ""}`}
                         >
                             <div
                                 className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors ${i < step
-                                        ? "bg-[var(--trust-green)] text-white"
-                                        : i === step
-                                            ? "bg-[var(--civic-amber)] text-[var(--navy-deep)]"
-                                            : "bg-white/10 text-muted-foreground"
+                                    ? "bg-[var(--trust-green)] text-white"
+                                    : i === step
+                                        ? "bg-[var(--civic-amber)] text-[var(--navy-deep)]"
+                                        : "bg-white/10 text-muted-foreground"
                                     }`}
                             >
                                 {i < step ? <CheckCircle2 className="w-3 h-3" /> : i + 1}
@@ -255,13 +260,13 @@ export default function SubmitComplaintPage() {
                         <button
                             onClick={() => setFillMode("manual")}
                             className={`group flex flex-col items-center gap-4 rounded-2xl border-2 p-8 text-center transition-all duration-200 ${fillMode === "manual"
-                                    ? "border-[var(--civic-amber)] bg-[var(--civic-amber-muted)] scale-[1.02]"
-                                    : "border-white/10 bg-white/3 hover:border-white/25 hover:bg-white/6"
+                                ? "border-[var(--civic-amber)] bg-[var(--civic-amber-muted)] scale-[1.02]"
+                                : "border-white/10 bg-white/3 hover:border-white/25 hover:bg-white/6"
                                 }`}
                         >
                             <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${fillMode === "manual"
-                                    ? "bg-[var(--civic-amber)] text-[var(--navy-deep)]"
-                                    : "bg-white/8 text-muted-foreground group-hover:text-foreground"
+                                ? "bg-[var(--civic-amber)] text-[var(--navy-deep)]"
+                                : "bg-white/8 text-muted-foreground group-hover:text-foreground"
                                 }`}>
                                 <PenLine className="w-7 h-7" />
                             </div>
@@ -276,16 +281,16 @@ export default function SubmitComplaintPage() {
                         <button
                             onClick={() => {
                                 setFillMode("manus");
-                                setTimeout(() => manusOpenRef.current?.(), 100);
+                                setStep(1); // Go straight to chat
                             }}
                             className={`group flex flex-col items-center gap-4 rounded-2xl border-2 p-8 text-center transition-all duration-200 ${fillMode === "manus"
-                                    ? "border-purple-500 bg-purple-500/10 scale-[1.02]"
-                                    : "border-white/10 bg-white/3 hover:border-purple-500/40 hover:bg-purple-500/5"
+                                ? "border-purple-500 bg-purple-500/10 scale-[1.02]"
+                                : "border-white/10 bg-white/3 hover:border-purple-500/40 hover:bg-purple-500/5"
                                 }`}
                         >
                             <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${fillMode === "manus"
-                                    ? "bg-purple-500 text-white"
-                                    : "bg-white/8 text-muted-foreground group-hover:text-purple-400"
+                                ? "bg-purple-500 text-white"
+                                : "bg-white/8 text-muted-foreground group-hover:text-purple-400"
                                 }`}>
                                 <Sparkles className="w-7 h-7" />
                             </div>
@@ -303,43 +308,48 @@ export default function SubmitComplaintPage() {
                         <div className="glass rounded-xl p-4 flex items-start gap-3 border border-purple-500/20">
                             <Sparkles className="w-4 h-4 text-purple-400 mt-0.5 shrink-0" />
                             <p className="text-sm text-muted-foreground">
-                                The <span className="text-purple-400 font-semibold">Manus drawer</span> has opened at the bottom right.
-                                Type your complaint in plain language and AI will fill all the fields automatically.
-                                Then click <strong>Next</strong> to review.
+                                You've selected <span className="text-purple-400 font-semibold">Manus AI</span>.
+                                Click <strong>Next</strong> to start the conversation.
                             </p>
                         </div>
                     )}
                 </div>
             )}
 
-            {/* ── Step 1: Category ────────────────────────────────── */}
+            {/* ── Step 1: Input (Category or Manus Chat) ───────────── */}
             {step === 1 && (
-                <div className="space-y-4">
-                    <h2 className="text-lg font-display font-semibold">What is this about?</h2>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        {CATEGORIES.map((cat) => {
-                            const Icon = cat.icon;
-                            const selected = form.category === cat.id;
-                            return (
-                                <button
-                                    key={cat.id}
-                                    onClick={() => setForm((f) => ({ ...f, category: cat.id }))}
-                                    className={`flex flex-col items-center gap-2.5 rounded-xl border-2 p-4 text-center transition-all duration-200 ${selected
+                fillMode === "manus" ? (
+                    <div className="pt-2 min-h-[500px] flex flex-col">
+                        <ManusChatView onFill={handleManuseFill} />
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        <h2 className="text-lg font-display font-semibold">What is this about?</h2>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            {CATEGORIES.map((cat) => {
+                                const Icon = cat.icon;
+                                const selected = form.category === cat.id;
+                                return (
+                                    <button
+                                        key={cat.id}
+                                        onClick={() => setForm((f) => ({ ...f, category: cat.id }))}
+                                        className={`flex flex-col items-center gap-2.5 rounded-xl border-2 p-4 text-center transition-all duration-200 ${selected
                                             ? `${cat.border} ${cat.bg} scale-[1.02]`
                                             : "border-white/10 bg-white/3 hover:bg-white/6 hover:border-white/20"
-                                        }`}
-                                >
-                                    <div className={`p-2.5 rounded-lg ${selected ? cat.bg : "bg-white/5"}`}>
-                                        <Icon className={`w-5 h-5 ${cat.color}`} />
-                                    </div>
-                                    <span className={`text-xs font-medium leading-tight ${selected ? "text-foreground" : "text-muted-foreground"}`}>
-                                        {cat.id}
-                                    </span>
-                                </button>
-                            );
-                        })}
+                                            }`}
+                                    >
+                                        <div className={`p-2.5 rounded-lg ${selected ? cat.bg : "bg-white/5"}`}>
+                                            <Icon className={`w-5 h-5 ${cat.color}`} />
+                                        </div>
+                                        <span className={`text-xs font-medium leading-tight ${selected ? "text-foreground" : "text-muted-foreground"}`}>
+                                            {cat.id}
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
-                </div>
+                )
             )}
 
             {/* ── Step 2: Details ─────────────────────────────────── */}
@@ -416,8 +426,8 @@ export default function SubmitComplaintPage() {
                                 type="button"
                                 onClick={() => setForm((f) => ({ ...f, isDelegated: !f.isDelegated }))}
                                 className={`w-5 h-5 rounded border-2 shrink-0 flex items-center justify-center transition-all ${form.isDelegated
-                                        ? "bg-[var(--civic-amber)] border-[var(--civic-amber)]"
-                                        : "border-white/20 hover:border-white/40"
+                                    ? "bg-[var(--civic-amber)] border-[var(--civic-amber)]"
+                                    : "border-white/20 hover:border-white/40"
                                     }`}
                             >
                                 {form.isDelegated && <CheckCircle2 className="w-3 h-3 text-[var(--navy-deep)]" />}
@@ -507,8 +517,8 @@ export default function SubmitComplaintPage() {
                         }}
                         onClick={() => document.getElementById("file-input")?.click()}
                         className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${dragOver
-                                ? "border-[var(--civic-amber)] bg-[var(--civic-amber-muted)]"
-                                : "border-white/15 hover:border-white/30 hover:bg-white/3"
+                            ? "border-[var(--civic-amber)] bg-[var(--civic-amber-muted)]"
+                            : "border-white/15 hover:border-white/30 hover:bg-white/3"
                             }`}
                     >
                         <Upload className={`w-8 h-8 mx-auto mb-3 ${dragOver ? "text-[var(--civic-amber)]" : "text-muted-foreground"}`} />
@@ -597,7 +607,7 @@ export default function SubmitComplaintPage() {
                     <ChevronLeft className="w-4 h-4" /> Back
                 </Button>
 
-                {step < STEPS.length - 1 ? (
+                {(step < steps.length - 1 && !(step === 1 && fillMode === "manus")) ? (
                     <Button
                         onClick={() => setStep((s) => s + 1)}
                         disabled={!canProceed()}
@@ -606,22 +616,21 @@ export default function SubmitComplaintPage() {
                         Next <ChevronRight className="w-4 h-4" />
                     </Button>
                 ) : (
-                    <Button
-                        onClick={handleSubmit}
-                        disabled={submitting}
-                        className="bg-[var(--civic-amber)] text-[var(--navy-deep)] hover:bg-[var(--civic-amber)]/90 font-bold gap-2 glow-amber"
-                    >
-                        {submitting ? (
-                            <><Loader2 className="w-4 h-4 animate-spin" /> Submitting…</>
-                        ) : (
-                            <><CheckCircle2 className="w-4 h-4" /> Submit Complaint</>
-                        )}
-                    </Button>
+                    step === steps.length - 1 && (
+                        <Button
+                            onClick={handleSubmit}
+                            disabled={submitting}
+                            className="bg-[var(--civic-amber)] text-[var(--navy-deep)] hover:bg-[var(--civic-amber)]/90 font-bold gap-2 glow-amber"
+                        >
+                            {submitting ? (
+                                <><Loader2 className="w-4 h-4 animate-spin" /> Submitting…</>
+                            ) : (
+                                <><CheckCircle2 className="w-4 h-4" /> Submit Complaint</>
+                            )}
+                        </Button>
+                    )
                 )}
             </div>
-
-            {/* Manus FAB — openRef lets Step 0 open it programmatically */}
-            <ManusDrawer onFill={handleManuseFill} openRef={manusOpenRef} />
         </div>
     );
 }
