@@ -2,9 +2,18 @@ import Link from "next/link";
 import { Shield, ArrowRight, Eye, BarChart3, GitBranch, Users, ChevronRight, Zap, Lock, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { AppNavbar } from "@/components/shared/AppNavbar";
+import { Footer } from "@/components/shared/Footer";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "JanMitra — Governance Accountability Platform",
+  description: "Track the flow of responsibility inside institutions. Making institutional failure visible and measurable for citizens and administrators.",
+};
 
 // ─── Real stats from API (with fallback) ─────────────────────────
 async function getPublicStats() {
+  // ... existing code ...
   try {
     const base = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
     const res = await fetch(`${base}/api/public/stats`, { next: { revalidate: 300 } });
@@ -184,7 +193,6 @@ function ActivityFeed() {
   );
 }
 
-import { AppNavbar } from "@/components/shared/AppNavbar";
 
 export default async function HomePage() {
   const apiStats = await getPublicStats();
@@ -225,9 +233,17 @@ export default async function HomePage() {
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             {/* Left col */}
             <div className="space-y-8">
-              <div className="inline-flex items-center gap-2 glass px-4 py-2 rounded-full text-sm text-muted-foreground">
-                <div className="w-1.5 h-1.5 rounded-full bg-[var(--trust-green)] pulse-green" />
-                Accountability Infrastructure for Indian Governance
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="inline-flex items-center gap-2 glass px-4 py-2 rounded-full text-sm text-muted-foreground">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[var(--trust-green)] pulse-green" />
+                  Accountability Infrastructure
+                </div>
+                {apiStats && (
+                  <div className="inline-flex items-center gap-2 glass border-[var(--trust-green)]/20 px-4 py-2 rounded-full text-xs font-bold text-[var(--trust-green)] uppercase tracking-wider">
+                    <Zap className="w-3 h-3 fill-current" />
+                    System Status: Healthy
+                  </div>
+                )}
               </div>
 
               <h1 className="text-5xl sm:text-6xl lg:text-7xl font-display font-bold leading-[1.05] tracking-tight">
@@ -508,21 +524,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-border py-10 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <img src="/icons/icon-192x192.png" alt="JanMitra" className="w-7 h-7 object-contain drop-shadow-[0_0_10px_rgba(245,158,11,0.2)]" />
-            <span className="text-sm font-semibold">JanMitra</span>
-            <span className="text-xs text-muted-foreground ml-2">— Making institutional failure visible since 2025</span>
-          </div>
-          <div className="flex items-center gap-6 text-xs text-muted-foreground">
-            <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link>
-            <Link href="/transparency" className="hover:text-foreground transition-colors">Public Dashboard</Link>
-            <span>© 2025 JanMitra</span>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

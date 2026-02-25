@@ -89,6 +89,7 @@ export function AppNavbar() {
                         ]
                         : [
                             { href: "/", label: "Home", icon: <Heart className="w-4 h-4" /> },
+                            { href: "/how-it-works", label: "How it Works", icon: <Zap className="w-4 h-4" /> },
                             { href: "/transparency", label: "Transparency", icon: <Globe className="w-4 h-4" /> },
                             { href: "/about", label: "About", icon: <Info className="w-4 h-4" /> },
                         ])

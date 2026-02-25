@@ -1,5 +1,3 @@
-"use client";
-
 import { AppNavbar } from "@/components/shared/AppNavbar";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -7,6 +5,12 @@ import {
     ArrowRight, CheckCircle2, Search, Activity, Users, Clock
 } from "lucide-react";
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Departments",
+    description: "Explore the government departments currently integrated with the JanMitra Trace Engine. View real-time honesty scores and resolution metrics.",
+};
 
 const DEPARTMENTS = [
     {

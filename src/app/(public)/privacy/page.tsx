@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Shield } from "lucide-react";
 import type { Metadata } from "next";
+import { AppNavbar } from "@/components/shared/AppNavbar";
+import { Footer } from "@/components/shared/Footer";
 
 export const metadata: Metadata = {
     title: "Privacy Policy",
@@ -9,22 +11,10 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
     return (
-        <div className="min-h-screen bg-mesh text-foreground">
-            {/* Minimal nav */}
-            <nav className="fixed top-0 inset-x-0 z-50 glass border-b border-[var(--glass-border)]">
-                <div className="max-w-4xl mx-auto px-4 h-16 flex items-center gap-3">
-                    <Link href="/" className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-lg bg-[var(--civic-amber)] flex items-center justify-center glow-amber">
-                            <Shield className="w-3.5 h-3.5 text-[var(--navy-deep)]" />
-                        </div>
-                        <span className="font-display font-bold tracking-tight">JanMitra</span>
-                    </Link>
-                    <span className="text-sm text-muted-foreground">/</span>
-                    <span className="text-sm text-muted-foreground">Privacy Policy</span>
-                </div>
-            </nav>
+        <div className="min-h-screen bg-[#020817] text-foreground">
+            <AppNavbar />
 
-            <main className="pt-28 pb-20 max-w-4xl mx-auto px-4 sm:px-6 space-y-10">
+            <main className="pt-32 pb-20 max-w-4xl mx-auto px-4 sm:px-6 space-y-10">
                 <div>
                     <h1 className="text-4xl font-display font-bold tracking-tight mb-3">Privacy Policy</h1>
                     <p className="text-muted-foreground text-sm">Last updated: February 2025</p>
@@ -82,6 +72,8 @@ export default function PrivacyPage() {
                     </Link>
                 </div>
             </main>
+
+            <Footer />
         </div>
     );
 }
