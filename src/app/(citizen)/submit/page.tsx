@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
     Droplets, Trash2, Navigation, Zap, Bus, HeartPulse,
     BookOpen, TreePine, Wind, Home, Shield, HelpCircle,
     MapPin, Upload, X, CheckCircle2, Loader2, ChevronLeft,
-    ChevronRight, Eye, EyeOff, Lock, Users
+    ChevronRight, Eye, EyeOff, Lock, Users, Sparkles, PenLine
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -87,7 +87,8 @@ const INITIAL_FORM: FormData = {
     files: [],
 };
 
-const STEPS = ["Category", "Details", "Location", "Evidence"];
+// Step 0 = How to Fill, Steps 1-4 = the actual form
+const STEPS = ["How to Fill", "Category", "Details", "Location", "Evidence"];
 
 // ─── Component ────────────────────────────────────────────────────
 export default function SubmitComplaintPage() {
@@ -96,9 +97,11 @@ export default function SubmitComplaintPage() {
     const router = useRouter();
 
     const [step, setStep] = useState(0);
+    const [fillMode, setFillMode] = useState<"" | "manual" | "manus">("");
     const [form, setForm] = useState<FormData>(INITIAL_FORM);
     const [submitting, setSubmitting] = useState(false);
     const [dragOver, setDragOver] = useState(false);
+    const manusOpenRef = useRef<(() => void) | null>(null);
 
     if (authLoading || !user) {
         return (
@@ -119,9 +122,8 @@ export default function SubmitComplaintPage() {
             description: data.description || f.description,
             location: data.location || f.location,
         }));
-        // Jump to wherever category or details need attention
-        if (!form.category && data.category) setStep(0);
-        else setStep(1);
+        // After Manus fills, jump straight to details step
+        setStep(2);
     }
 
     // File handling
@@ -144,9 +146,10 @@ export default function SubmitComplaintPage() {
 
     // Validation per step
     function canProceed(): boolean {
-        if (step === 0) return !!form.category;
-        if (step === 1) return form.title.trim().length >= 5 && form.description.trim().length >= 20;
-        if (step === 2) return form.location.trim().length >= 3;
+        if (step === 0) return fillMode !== "";
+        if (step === 1) return !!form.category;
+        if (step === 2) return form.title.trim().length >= 5 && form.description.trim().length >= 20;
+        if (step === 3) return form.location.trim().length >= 3;
         return true; // evidence is optional
     }
 
@@ -159,7 +162,6 @@ export default function SubmitComplaintPage() {
             const slaDeadlineAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
             const now = new Date().toISOString();
 
-            // Upload files if any
             let evidenceUrls: string[] = [];
             if (form.files.length > 0) {
                 toast.loading("Uploading evidence files...");
@@ -167,7 +169,6 @@ export default function SubmitComplaintPage() {
                 toast.dismiss();
             }
 
-            // Write grievance to Firestore
             const grievanceData = {
                 id: grievanceId,
                 citizenId: user.id,
@@ -189,8 +190,6 @@ export default function SubmitComplaintPage() {
             };
 
             await setDoc(doc(db, "grievances", grievanceId), grievanceData);
-
-            // Write GRIEVANCE_SUBMITTED event
             await addDoc(collection(db, "grievances", grievanceId, "events"), {
                 type: "GRIEVANCE_SUBMITTED",
                 actorId: user.id,
@@ -243,8 +242,78 @@ export default function SubmitComplaintPage() {
                 <Progress value={pct} className="h-1.5 bg-white/10" />
             </div>
 
-            {/* ── Step 0: Category ────────────────────────────────────── */}
+            {/* ── Step 0: How to Fill ──────────────────────────────── */}
             {step === 0 && (
+                <div className="space-y-6">
+                    <div>
+                        <h2 className="text-lg font-display font-semibold">How would you like to fill this?</h2>
+                        <p className="text-sm text-muted-foreground mt-1">Choose how you want to describe your complaint.</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Manual card */}
+                        <button
+                            onClick={() => setFillMode("manual")}
+                            className={`group flex flex-col items-center gap-4 rounded-2xl border-2 p-8 text-center transition-all duration-200 ${fillMode === "manual"
+                                    ? "border-[var(--civic-amber)] bg-[var(--civic-amber-muted)] scale-[1.02]"
+                                    : "border-white/10 bg-white/3 hover:border-white/25 hover:bg-white/6"
+                                }`}
+                        >
+                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${fillMode === "manual"
+                                    ? "bg-[var(--civic-amber)] text-[var(--navy-deep)]"
+                                    : "bg-white/8 text-muted-foreground group-hover:text-foreground"
+                                }`}>
+                                <PenLine className="w-7 h-7" />
+                            </div>
+                            <div>
+                                <p className="font-bold text-base">Fill Manually</p>
+                                <p className="text-xs text-muted-foreground mt-1">Step-by-step form. You type everything yourself.</p>
+                            </div>
+                            {fillMode === "manual" && <CheckCircle2 className="w-5 h-5 text-[var(--civic-amber)]" />}
+                        </button>
+
+                        {/* Manus AI card */}
+                        <button
+                            onClick={() => {
+                                setFillMode("manus");
+                                setTimeout(() => manusOpenRef.current?.(), 100);
+                            }}
+                            className={`group flex flex-col items-center gap-4 rounded-2xl border-2 p-8 text-center transition-all duration-200 ${fillMode === "manus"
+                                    ? "border-purple-500 bg-purple-500/10 scale-[1.02]"
+                                    : "border-white/10 bg-white/3 hover:border-purple-500/40 hover:bg-purple-500/5"
+                                }`}
+                        >
+                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${fillMode === "manus"
+                                    ? "bg-purple-500 text-white"
+                                    : "bg-white/8 text-muted-foreground group-hover:text-purple-400"
+                                }`}>
+                                <Sparkles className="w-7 h-7" />
+                            </div>
+                            <div>
+                                <p className="font-bold text-base">Use Manus AI</p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Just describe in plain words — AI fills the form for you.
+                                </p>
+                            </div>
+                            {fillMode === "manus" && <CheckCircle2 className="w-5 h-5 text-purple-400" />}
+                        </button>
+                    </div>
+
+                    {fillMode === "manus" && (
+                        <div className="glass rounded-xl p-4 flex items-start gap-3 border border-purple-500/20">
+                            <Sparkles className="w-4 h-4 text-purple-400 mt-0.5 shrink-0" />
+                            <p className="text-sm text-muted-foreground">
+                                The <span className="text-purple-400 font-semibold">Manus drawer</span> has opened at the bottom right.
+                                Type your complaint in plain language and AI will fill all the fields automatically.
+                                Then click <strong>Next</strong> to review.
+                            </p>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* ── Step 1: Category ────────────────────────────────── */}
+            {step === 1 && (
                 <div className="space-y-4">
                     <h2 className="text-lg font-display font-semibold">What is this about?</h2>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -273,8 +342,8 @@ export default function SubmitComplaintPage() {
                 </div>
             )}
 
-            {/* ── Step 1: Details ─────────────────────────────────────── */}
-            {step === 1 && (
+            {/* ── Step 2: Details ─────────────────────────────────── */}
+            {step === 2 && (
                 <div className="space-y-5">
                     <h2 className="text-lg font-display font-semibold">Describe the issue</h2>
 
@@ -387,8 +456,8 @@ export default function SubmitComplaintPage() {
                 </div>
             )}
 
-            {/* ── Step 2: Location ─────────────────────────────────────── */}
-            {step === 2 && (
+            {/* ── Step 3: Location ────────────────────────────────── */}
+            {step === 3 && (
                 <div className="space-y-5">
                     <h2 className="text-lg font-display font-semibold">Where is this happening?</h2>
 
@@ -417,8 +486,8 @@ export default function SubmitComplaintPage() {
                 </div>
             )}
 
-            {/* ── Step 3: Evidence ─────────────────────────────────────── */}
-            {step === 3 && (
+            {/* ── Step 4: Evidence ────────────────────────────────── */}
+            {step === 4 && (
                 <div className="space-y-5">
                     <div>
                         <h2 className="text-lg font-display font-semibold">Add Evidence (Optional)</h2>
@@ -443,7 +512,7 @@ export default function SubmitComplaintPage() {
                             }`}
                     >
                         <Upload className={`w-8 h-8 mx-auto mb-3 ${dragOver ? "text-[var(--civic-amber)]" : "text-muted-foreground"}`} />
-                        <p className="text-sm font-medium">Drag & drop files here</p>
+                        <p className="text-sm font-medium">Drag &amp; drop files here</p>
                         <p className="text-xs text-muted-foreground mt-1">or click to browse · JPG, PNG, PDF, MP4</p>
                         <input
                             id="file-input"
@@ -517,7 +586,7 @@ export default function SubmitComplaintPage() {
                 </div>
             )}
 
-            {/* ── Navigation ───────────────────────────────────────────── */}
+            {/* ── Navigation ───────────────────────────────────────── */}
             <div className="flex items-center justify-between pt-2">
                 <Button
                     variant="outline"
@@ -551,8 +620,8 @@ export default function SubmitComplaintPage() {
                 )}
             </div>
 
-            {/* Manus FAB */}
-            <ManusDrawer onFill={handleManuseFill} />
+            {/* Manus FAB — openRef lets Step 0 open it programmatically */}
+            <ManusDrawer onFill={handleManuseFill} openRef={manusOpenRef} />
         </div>
     );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Bot, X, Send, Loader2, Sparkles, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,16 +16,25 @@ interface ExtractedData {
 
 interface ManusDrawerProps {
     onFill: (data: ExtractedData) => void;
+    openRef?: React.MutableRefObject<(() => void) | null>;
 }
+
+import React from "react";
 
 interface Message {
     role: "user" | "manus";
     text: string;
 }
 
-export function ManusDrawer({ onFill }: ManusDrawerProps) {
+export function ManusDrawer({ onFill, openRef }: ManusDrawerProps) {
     const [open, setOpen] = useState(false);
     const [input, setInput] = useState("");
+
+    // Expose open function to parent via ref
+    useEffect(() => {
+        if (openRef) openRef.current = () => setOpen(true);
+    }, [openRef]);
+
     const [messages, setMessages] = useState<Message[]>([
         {
             role: "manus",
@@ -132,8 +141,8 @@ export function ManusDrawer({ onFill }: ManusDrawerProps) {
                                 >
                                     <div
                                         className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${msg.role === "user"
-                                                ? "bg-[var(--civic-amber)] text-[var(--navy-deep)] font-medium rounded-tr-sm"
-                                                : "bg-white/8 text-foreground rounded-tl-sm"
+                                            ? "bg-[var(--civic-amber)] text-[var(--navy-deep)] font-medium rounded-tr-sm"
+                                            : "bg-white/8 text-foreground rounded-tl-sm"
                                             }`}
                                     >
                                         {msg.text}
