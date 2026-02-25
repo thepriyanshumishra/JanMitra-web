@@ -10,6 +10,19 @@ const withPWA = withPWAInit({
 const nextConfig: NextConfig = {
   reactCompiler: true,
   turbopack: {}, // Silence Next 16 Turbopack/Webpack mismatch warning
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          {
+            key: "Cross-Origin-Opener-Policy",
+            value: "same-origin-allow-popups",
+          }, // To fix Firebase Auth Google Login popup error
+        ],
+      },
+    ];
+  },
 };
 
 export default withPWA(nextConfig);
