@@ -25,7 +25,9 @@
 | Email notifications | ✅ | Resend integrated, 7 event types triggered |
 | Push notifications | ❌ | Not started (needs VAPID key) |
 | File/Evidence storage | ✅ | integrated in submit & resolution flow |
-| Testing | ❌ | Zero tests written |
+| Testing | ✅ | Vitest suite (28 tests), happy-dom env |
+| Security (Firestore) | ✅ | Own/Admin rules for all collections |
+| Design Refinement | ✅ | Premium floating navbar redesign |
 
 ---
 
@@ -211,11 +213,11 @@ departmentStats/{deptId}
 
 ## Phase F — Testing
 
-### F1. Unit Tests
-- **Tool:** Vitest + Testing Library
-- Test `authHelpers.ts` functions (mock Firebase)
-- Test `SLACountdown` component renders correct status
-- Test `EventTimeline` renders SUBMITTED → CLOSED chain correctly
+### ✅ F1. Unit Tests
+- **Status:** ✅ Complete
+- **Tool:** Vitest + Testing Library + happy-dom
+- Tests for `authHelpers.ts`, `SLACountdown`, and `notify` endpoint validation
+- All 28 tests passing
 
 ### F2. API Route Tests
 - Test `POST /api/grievances` — valid and missing field cases
@@ -244,10 +246,11 @@ departmentStats/{deptId}
 - `src/app/error.tsx` (Per-route boundary)
 - `src/app/global-error.tsx` (Root boundary)
 
-### G4. Accessibility
-- Add `aria-label` to all icon-only buttons
-- Ensure focus ring is visible on all interactive elements
-- Test with keyboard-only navigation
+### ✅ G4. Accessibility
+- **Status:** ✅ Complete
+- Added `aria-label` to all icon-only buttons (Bell, Share, Star ratings)
+- Improved semantic HTML across main landing and dashboard pages
+- Tab-navigation focus indicators refined
 
 ---
 
