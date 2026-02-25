@@ -59,10 +59,10 @@ const tooltipStyle = {
 
 export default function TransparencyDashboard() {
     const [complaints, setComplaints] = useState<Grievance[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(() => db ? true : false);
 
     useEffect(() => {
-        if (!db) { setLoading(false); return; }
+        if (!db) return;
         const q = query(collection(db, "grievances"), orderBy("createdAt", "desc"));
         return onSnapshot(q, (snap) => {
             setComplaints(snap.docs.map(d => ({ id: d.id, ...d.data() } as Grievance)));
