@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { validateSession } from "@/lib/auth-middleware";
 
 // ─── Model config ─────────────────────────────────────────────────
 // Primary: llama-3.3-70b-versatile  (best quality, still free on Groq dev tier)
@@ -42,6 +43,14 @@ Rules:
 - Output ONLY raw JSON, no markdown, no backticks`;
 
 export async function POST(req: NextRequest) {
+    // Require authentication — prevents abuse of Groq API key
+    try {
+        await validateSession(req);
+    } catch (e) {
+        if (e instanceof Response) return e;
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     try {
         const { message } = await req.json();
         if (!message || typeof message !== "string") {

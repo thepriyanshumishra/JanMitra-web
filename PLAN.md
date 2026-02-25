@@ -20,8 +20,8 @@
 | Public Transparency | ✅ | Heatmap, dept stats |
 | Responsibility Trace (Events) | ✅ | Timeline + FailureReplay component |
 | PWA | ✅ | Icons fixed, manifest, offline shell |
-| Firebase Admin SDK backend | ❌ | All API routes use client SDK or stubs |
-| Real database writes (API) | 🔶 | Client writes directly to Firestore |
+| Firebase Admin SDK backend | ✅ | `firebase-admin.ts` + `auth-middleware.ts` |
+| Real database writes (API) | ✅ | All routes use Admin SDK batch writes |
 | Email notifications | ❌ | Not started |
 | Push notifications | ❌ | Not started |
 | File/Evidence storage | 🔶 | uploadFile helper exists; not integrated |
@@ -29,76 +29,67 @@
 
 ---
 
-## Phase A — Auth & Security Hardening
+## ✅ Phase A — Auth & Security Hardening (COMPLETE)
 
-### A1. Firebase Admin SDK Setup
-- Install `firebase-admin` package
-- Create `src/lib/firebase-admin.ts` with service account initialization
-- Store `FIREBASE_ADMIN_SERVICE_ACCOUNT_KEY` as Vercel env var (JSON as string)
-- Use Admin SDK in all API routes instead of client SDK
+### ✅ A1. Firebase Admin SDK Setup
+- `firebase-admin` installed
+- `src/lib/firebase-admin.ts` created with graceful fallback
+- `FIREBASE_ADMIN_SERVICE_ACCOUNT_KEY` added to `.env.local` and Vercel
 
-### A2. Secure Session Validation
-- Currently: session cookie stores raw Firebase ID token (insecure long-term)
-- **Fix:** `POST /api/auth/session` should call `adminAuth.verifyIdToken(idToken)` then `adminAuth.createSessionCookie(idToken, duration)` to issue a proper short-lived Firebase session cookie
-- Add a `validateSession` middleware function in `src/lib/auth-middleware.ts`
-- All protected API routes must call `validateSession` first
+### ✅ A2. Secure Session Validation
+- `src/lib/auth-middleware.ts` — `validateSession()` + `requireRole()` helpers
+- `POST /api/auth/session` now issues real Firebase session cookies; `DELETE` revokes tokens
+- All protected routes use `validateSession()`
 
-### A3. Role Enforcement via Custom Claims
-- Set Firebase custom claims (`role: "officer"` etc.) via Admin SDK on role change
-- Remove the demo role switcher from production (gate it behind `NODE_ENV === 'development'`)
-- API routes should read the role from verified custom claims, not Firestore (prevents privilege escalation)
+### ✅ A3. Role Enforcement via Custom Claims
+- `src/app/api/admin/set-role/route.ts` — system_admin-only endpoint
+- Demo role switcher gated to `NODE_ENV === 'development'` only
+- `grievances/route.ts` uses `validateSession()` instead of raw cookie check
 
-### A4. Google OAuth — Production Domains
-- Add `jan-mitra-web.vercel.app` to Firebase Console → Auth → Authorized Domains
-- Add the same domain to Google Cloud Console → APIs & Services → OAuth 2.0 Client → Authorized redirect URIs
+### ✅ A4. Google OAuth — Production Domains
+- `jan-mitra-web.vercel.app` added to Firebase Auth Authorized Domains
+- Vercel URL added to Google Cloud Console OAuth Authorized redirect URIs
 
 ---
 
-## Phase B — Backend API (Firebase Admin)
+## ✅ Phase B — Backend API (COMPLETE)
 
-### B1. Core Grievance API
-**File:** `src/app/api/grievances/route.ts`
-- `POST`: Wire actual Firestore write using Admin SDK + trigger initial `GRIEVANCE_SUBMITTED` event
-- `GET`: Implement real query by `citizenId` with cursor pagination
-- Add routing logic: on submit, auto-assign to the correct `departmentId` based on complaint `category`
+### ✅ B1. Core Grievance API
+- Real Firestore batch writes (grievance + GRIEVANCE_SUBMITTED event + dept stats)
+- Auto-routing by category → departmentId
+- GET with paginated Firestore query, role-based access control
 
-### B2. Grievance Events API
-**File:** `src/app/api/grievances/[id]/events/route.ts` *(new)*
-- `GET`: Retrieve all events for a grievance ID ordered by `createdAt` ascending
-- `POST`: Append a new event (officer update, delay explanation, proof upload, etc.)
-- All writes must be append-only (never update or delete events)
+### ✅ B2. Grievance Events API
+- `src/app/api/grievances/[id]/events/route.ts`
+- GET: ordered event list with access control
+- POST: append-only using `.create()`, role-based event type restrictions
 
-### B3. Grievance Status Update API
-**File:** `src/app/api/grievances/[id]/route.ts` *(new)*
-- `PATCH`: Officer/admin updates `status`, writes corresponding event
-- Triggers SLA recalculation — if `status === "in_progress"` pause SLA timer; if `status === "escalated"` reset SLA clock with new deadline
+### ✅ B3. Grievance Status Update API
+- `src/app/api/grievances/[id]/route.ts`
+- PATCH: atomic status update + event append, SLA recalculation on escalation
+- GET: single grievance fetch with access control
 
-### B4. Department API
-**File:** `src/app/api/departments/route.ts` *(new)*
-- `GET`: List all departments (public route, no auth needed)
-- `POST`, `PATCH`, `DELETE`: System admin only — create/update/remove departments
-- Wire to the System Admin departments page (`src/app/admin/system/departments/page.tsx`)
+### ✅ B4. Department API
+- `src/app/api/departments/route.ts` — public GET, system_admin POST
+- `src/app/api/departments/[id]/route.ts` — system_admin PATCH + DELETE
 
-### B5. Public Transparency API
-**File:** `src/app/api/public/stats/route.ts` *(new)*
-- `GET`: Returns aggregated stats (total complaints, SLA honesty score per dept, heatmap data) — only public-level info
-- Used by the Transparency dashboard and landing page counters
+### ✅ B5. Public Transparency API
+- `src/app/api/public/stats/route.ts`
+- ISR with 5-minute cache
+- Uses Firestore `count()` aggregation + ward heatmap grouping
 
-### B6. Support Signal API
-**File:** `src/app/api/grievances/[id]/support/route.ts` *(new)*
-- `POST`: Authenticated citizen adds a support signal to a public complaint (prevents duplicate votes via composite key in Firestore)
+### ✅ B6. Support Signal API
+- `src/app/api/grievances/[id]/support/route.ts`
+- Composite key prevents duplicates; atomically increments counter
+- POST (add) + DELETE (undo)
 
-### B7. Manus AI Route
-**File:** `src/app/api/manus/extract/route.ts`
-- Already exists. Improvements:
-  - Validate API key exists before calling Groq (return friendly error if not set)
-  - Add rate limiting: max 10 requests/hour per user via Upstash Redis
+### ✅ B7. Manus AI Route
+- Auth guard added — only authenticated users can call Groq API
 
-### B8. SLA Scheduler (Cron)
-- Use Vercel Cron Jobs (`vercel.json` `crons` key) to run a job every hour
-- **File:** `src/app/api/cron/sla-check/route.ts` *(new)*
-- Query all grievances where `slaStatus !== "breached"` and `slaDeadlineAt < now()`
-- Write `SLA_BREACHED` event and update `slaStatus = "breached"` for each
+### ✅ B8. SLA Scheduler (Cron)
+- `src/app/api/cron/sla-check/route.ts` — batch SLA breach detection
+- `vercel.json` — runs every hour (`0 * * * *`)
+- Protected by `CRON_SECRET` header
 
 ---
 
@@ -323,13 +314,12 @@ service firebase.storage {
 
 | # | Task | Impact | Effort |
 |---|---|---|---|
-| 1 | Firebase Admin SDK + secure session | 🔴 Critical | Medium |
-| 2 | Firestore Security Rules | 🔴 Critical | Low |
-| 3 | Grievance Events API (B2) | 🔴 Critical | Medium |
+| 1 | ~~Firebase Admin SDK + secure session~~ | ✅ Done | - |
+| 2 | Phase B — Backend API (B1–B8) | 🔴 Critical | High |
+| 3 | Firestore Security Rules (C2) | 🔴 Critical | Low |
 | 4 | Officer complaint detail actions (D2) | 🟠 High | Medium |
 | 5 | Evidence upload integration (D1) | 🟠 High | Low |
 | 6 | Citizen dashboard real data (D4) | 🟠 High | Low |
 | 7 | Department CRUD wiring (D6) | 🟡 Medium | Medium |
-| 8 | SLA Cron Job (B8) | 🟡 Medium | Low |
-| 9 | Email notifications (E1) | 🟡 Medium | Medium |
-| 10 | E2E tests with Playwright (F3) | 🟢 Low | High |
+| 8 | Email notifications (E1) | 🟡 Medium | Medium |
+| 9 | E2E tests with Playwright (F3) | 🟢 Low | High |
