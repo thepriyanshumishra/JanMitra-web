@@ -181,7 +181,6 @@ export default function SubmitComplaintPage() {
             }
 
             const grievanceData = {
-                id: grievanceId,
                 citizenId: user.id,
                 category: form.category,
                 title: form.title.trim(),
@@ -191,24 +190,21 @@ export default function SubmitComplaintPage() {
                 isDelegated: form.isDelegated,
                 ...(form.isDelegated ? { delegatedFor: { name: form.delegateName, relationship: form.delegateRelation } } : {}),
                 evidenceUrls,
-                status: "submitted",
-                slaStatus: "on_track",
-                slaDeadlineAt,
-                supportCount: 0,
-                reopenCount: 0,
-                createdAt: now,
-                updatedAt: now,
             };
 
-            await setDoc(doc(db, "grievances", grievanceId), grievanceData);
-            await addDoc(collection(db, "grievances", grievanceId, "events"), {
-                type: "GRIEVANCE_SUBMITTED",
-                actorId: user.id,
-                timestamp: now,
-                payload: { category: form.category, title: form.title },
+            const response = await fetch("/api/grievances", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(grievanceData),
             });
 
-            toast.success(`Complaint ${grievanceId} submitted!`);
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || "Submission failed");
+            }
+
+            const result = await response.json();
+            toast.success(`Complaint ${result.id} submitted!`);
             router.push("/dashboard");
         } catch (err) {
             console.error(err);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, MapPin, Search, Navigation, CheckCircle2 } from "lucide-react";
@@ -95,17 +95,19 @@ export function LocationModal({ open, onOpenChange, onSelectLocation }: Location
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-md p-0 overflow-hidden bg-background/95 backdrop-blur-xl border-foreground/10">
-                <div className="p-6 pb-4">
-                    <div className="flex items-center gap-3 mb-4">
+                <DialogHeader className="p-6 pb-0 text-left">
+                    <div className="flex items-center gap-3 mb-2">
                         <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
                             <MapPin className="w-5 h-5 text-blue-500" />
                         </div>
-                        <div>
-                            <h2 className="text-xl font-display font-semibold">Location Details</h2>
-                            <p className="text-sm text-muted-foreground">Where is this happening?</p>
-                        </div>
+                        <DialogTitle className="text-xl font-display font-semibold">Location Details</DialogTitle>
                     </div>
+                    <DialogDescription className="text-sm text-muted-foreground">
+                        Where is this happening? You can use GPS auto-detection or search manually.
+                    </DialogDescription>
+                </DialogHeader>
 
+                <div className="p-6 pt-4">
                     {!selectedAddress ? (
                         <Tabs defaultValue="gps" className="w-full">
                             <TabsList className="grid w-full grid-cols-2 mb-4 bg-foreground/5">

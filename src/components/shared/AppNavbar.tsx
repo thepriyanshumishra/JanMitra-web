@@ -225,15 +225,6 @@ export function AppNavbar() {
                                         </Link>
                                     </DropdownMenuItem>
 
-                                    <DropdownMenuItem className="rounded-xl focus:bg-foreground/10 cursor-pointer transition-colors py-2.5">
-                                        <Link href="/profile/notifications" className="flex items-center gap-3 w-full">
-                                            <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500">
-                                                <Bell className="w-4 h-4" />
-                                            </div>
-                                            <span className="font-bold text-sm">Notifications</span>
-                                        </Link>
-                                    </DropdownMenuItem>
-
                                     <DropdownMenuSeparator className="bg-foreground/10 my-1.5" />
 
                                     <DropdownMenuItem

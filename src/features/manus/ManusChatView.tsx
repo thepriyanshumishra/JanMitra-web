@@ -209,30 +209,39 @@ export function ManusChatView({ onFill }: ManusChatViewProps) {
             return;
         }
 
-        if (isListening) {
-            handleAcceptRecording();
-        } else {
-            setTranscriptBuf("");
-            setInterimBuf("");
-            // Smart auto detection logic
-            let targetLang = selectedLang.code;
-            if (targetLang === "auto") {
-                const browserLang = navigator.language || "en-IN";
-                // If it's a generic English or Indian English, use en-IN as it handles code-mixing better
-                if (browserLang.startsWith("en") || browserLang.includes("IN")) {
-                    targetLang = "en-IN";
-                } else {
-                    targetLang = browserLang;
-                }
-                console.log("Auto-detecting language as:", targetLang);
-            }
+        try {
+            if (isListening) {
+                recognitionRef.current.stop();
+                setIsListening(false);
+                // The onend handler will also be called, but we set it here for immediate UI feedback
+            } else {
+                setTranscriptBuf("");
+                setInterimBuf("");
 
-            recognitionRef.current.lang = targetLang;
-            try {
+                // Smart auto detection logic
+                let targetLang = selectedLang.code;
+                if (targetLang === "auto") {
+                    const browserLang = navigator.language || "en-IN";
+                    if (browserLang.startsWith("en") || browserLang.includes("IN")) {
+                        targetLang = "en-IN";
+                    } else {
+                        targetLang = browserLang;
+                    }
+                    console.log("Auto-detecting language as:", targetLang);
+                }
+
+                recognitionRef.current.lang = targetLang;
                 recognitionRef.current.start();
                 setIsListening(true);
-            } catch (err) {
-                console.error("Failed to start recognition:", err);
+            }
+        } catch (err: any) {
+            console.error("Speech recognition error:", err);
+            // Handle "already started" or other state errors gracefully
+            if (err.name === 'InvalidStateError') {
+                setIsListening(true); // Sync state if browser thinks it's already on
+            } else {
+                setIsListening(false);
+                toast.error("Voice input could not start.");
             }
         }
     };
