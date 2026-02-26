@@ -3,11 +3,8 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import {
-    doc, onSnapshot, collection, addDoc, updateDoc,
-    serverTimestamp
-} from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { LocalStorage } from "@/lib/storage";
 import {
     ArrowLeft, CheckCircle2, AlertTriangle, XCircle,
     RefreshCw, FileEdit, Loader2, ChevronDown, Upload,
@@ -23,8 +20,8 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { SLACountdown } from "@/components/grievance/SLACountdown";
 import { EventTimeline } from "@/components/grievance/EventTimeline";
+import { ActionInterviewModal } from "@/components/grievance/ActionInterviewModal";
 import { useAuth } from "@/features/auth/AuthProvider";
-import { uploadEvidenceFile } from "@/lib/uploadFile";
 
 interface GrievanceDoc {
     id: string;
@@ -47,15 +44,7 @@ const STATUS_LABELS: Record<string, string> = {
     escalated: "Escalated", closed: "Resolved", reopened: "Reopened",
 };
 
-const DELAY_REASONS = [
-    "Technical / Equipment Issue",
-    "Awaiting Materials / Resources",
-    "Pending Approval / Clearance",
-    "Weather / Force Majeure",
-    "Inter-department Coordination",
-    "High Priority Task Conflict",
-    "Other",
-];
+
 
 export default function OfficerComplaintPage() {
     const params = useParams<{ id: string }>();
@@ -66,10 +55,11 @@ export default function OfficerComplaintPage() {
     const [message, setMessage] = useState("");
     const [selectedStatus, setSelectedStatus] = useState("in_progress");
 
-    // Delay explanation
-    const [delayReason, setDelayReason] = useState(DELAY_REASONS[0]);
-    const [delayDetails, setDelayDetails] = useState("");
-    const [showDelayForm, setShowDelayForm] = useState(false);
+    // AI Interview
+    const [interviewOpen, setInterviewOpen] = useState(false);
+    const [interviewAction, setInterviewAction] = useState<"RESOLVE" | "ESCALATE" | "DELAY" | null>(null);
+    const [aiVerifiedAction, setAiVerifiedAction] = useState<"RESOLVE" | "ESCALATE" | "DELAY" | null>(null);
+    const [aiRequiresEvidence, setAiRequiresEvidence] = useState(false);
 
     // Proof upload
     const [proofFile, setProofFile] = useState<File | null>(null);
@@ -78,11 +68,14 @@ export default function OfficerComplaintPage() {
     const proofInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-        if (!db || !params.id) return;
-        return onSnapshot(doc(db, "grievances", params.id), (snap) => {
-            if (snap.exists()) setGrievance({ id: snap.id, ...snap.data() } as GrievanceDoc);
-            setLoading(false);
-        });
+        if (!params.id) return;
+
+        // Fetch from LocalStorage
+        const localData = LocalStorage.getGrievance(params.id);
+        if (localData) {
+            setGrievance(localData as unknown as GrievanceDoc);
+        }
+        setLoading(false);
     }, [params.id]);
 
     async function performAction(
@@ -91,30 +84,47 @@ export default function OfficerComplaintPage() {
         newSlaStatus?: string,
         extra?: Record<string, string>
     ) {
-        if (!db || !grievance || !user) return;
+        if (!grievance || !user) return;
         setActionLoading(true);
         try {
             const now = new Date().toISOString();
-            await addDoc(collection(db, "grievances", grievance.id, "events"), {
-                type,
+
+            // 1. Save event in LocalStorage
+            LocalStorage.saveEvent({
+                id: `EVT-${Date.now()}`,
+                grievanceId: grievance.id,
+                eventType: type as any,
                 actorId: user.id,
-                actorName: user.name ?? "Officer",
-                timestamp: now,
+                actorRole: user.role,
                 payload: {
                     newStatus,
                     ...(message ? { message } : {}),
                     ...extra,
                 },
+                createdAt: now,
             });
-            const update: Record<string, unknown> = { status: newStatus, updatedAt: now };
+
+            // 2. Update grievance in LocalStorage
+            const update: any = {
+                ...grievance,
+                status: newStatus,
+                updatedAt: now
+            };
             if (newSlaStatus) update.slaStatus = newSlaStatus;
             if (newStatus === "closed") update.closedAt = now;
-            await updateDoc(doc(db, "grievances", grievance.id), update);
+
+            LocalStorage.saveGrievance(update);
+            setGrievance(update);
+
             toast.success(`Action recorded: ${type.replace(/_/g, " ")}`);
             setMessage("");
 
-            // Fire-and-forget email notification
-            sendNotify(type, grievance.citizenId, grievance.id, { newStatus, ...(message ? { message } : {}), ...extra });
+            // Fire-and-forget: still try the API if configured
+            fetch(`/api/grievances/${grievance.id}/events`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ type, newStatus, message, ...extra }),
+            }).catch(() => { });
         } catch (err) {
             console.error(err);
             toast.error("Action failed. Please try again.");
@@ -149,47 +159,59 @@ export default function OfficerComplaintPage() {
 
 
     async function handleUploadProof() {
-        if (!db || !grievance || !user || !proofFile) return;
+        if (!grievance || !user || !proofFile) return;
         setProofUploading(true);
         setProofProgress(0);
         try {
-            const url = await uploadEvidenceFile(
-                grievance.id,
-                proofFile,
-                (p) => setProofProgress(p)
-            );
+            // Mock upload for local storage
+            const mockUrl = `/mock-proof/${grievance.id}/${proofFile.name}`;
             const now = new Date().toISOString();
-            await addDoc(collection(db, "grievances", grievance.id, "events"), {
-                type: "PROOF_UPLOADED",
+
+            LocalStorage.saveEvent({
+                id: `EVT-${Date.now()}`,
+                grievanceId: grievance.id,
+                eventType: "PROOF_UPLOADED",
                 actorId: user.id,
-                actorName: user.name ?? "Officer",
-                timestamp: now,
-                payload: { proofUrl: url, fileName: proofFile.name },
+                actorRole: user.role,
+                payload: { proofUrl: mockUrl, fileName: proofFile.name },
+                createdAt: now,
             });
-            // Store proof URL on the grievance doc itself too
-            await updateDoc(doc(db, "grievances", grievance.id), {
-                proofUrls: [...(grievance.evidenceUrls ?? []), url],
+
+            const update = {
+                ...grievance,
+                evidenceUrls: [...(grievance.evidenceUrls ?? []), mockUrl],
                 updatedAt: now,
-            });
-            toast.success("Proof uploaded and recorded on the event log.");
+            };
+
+            LocalStorage.saveGrievance(update as any);
+            setGrievance(update as any);
+
+            toast.success("Proof recorded locally.");
             setProofFile(null);
         } catch (err) {
             console.error(err);
-            toast.error("Proof upload failed. Please try again.");
+            toast.error("Proof upload failed.");
         } finally {
             setProofUploading(false);
             setProofProgress(0);
         }
     }
 
-    async function handleDelayExplanation() {
+    function handleStartInterview(action: "RESOLVE" | "ESCALATE" | "DELAY") {
+        setInterviewAction(action);
+        setInterviewOpen(true);
+    }
+
+    async function onInterviewComplete(finalReason: string, requiresEvidence: boolean) {
         if (!grievance || !user) return;
-        await performAction("DELAY_EXPLAINED", grievance.status, undefined, {
-            delayReason,
-            details: delayDetails,
-        });
-        setShowDelayForm(false);
-        setDelayDetails("");
+
+        // Populate the main textarea with the AI's synthesized reason
+        setMessage(finalReason);
+        setAiVerifiedAction(interviewAction);
+        setAiRequiresEvidence(requiresEvidence);
+        setInterviewOpen(false);
+
+        toast.info("AI reasoning captured! You can now review and submit the action.", { duration: 4000 });
     }
 
     if (loading) return (
@@ -296,7 +318,7 @@ export default function OfficerComplaintPage() {
                                     {/* Acknowledge */}
                                     {["submitted", "routed", "assigned"].includes(grievance.status) && (
                                         <Button
-                                            onClick={() => performAction("ACKNOWLEDGED", "acknowledged")}
+                                            onClick={() => performAction("OFFICER_ACKNOWLEDGED", "acknowledged")}
                                             disabled={actionLoading}
                                             className="w-full bg-[var(--trust-green)] hover:bg-[var(--trust-green)]/90 text-white font-bold gap-2"
                                         >
@@ -325,7 +347,7 @@ export default function OfficerComplaintPage() {
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                         <Button
-                                            onClick={() => performAction("STATUS_UPDATED", selectedStatus)}
+                                            onClick={() => performAction("UPDATE_PROVIDED", selectedStatus)}
                                             disabled={actionLoading}
                                             variant="outline"
                                             className="flex-1 border-white/10 hover:bg-white/5 gap-2 text-sm"
@@ -377,67 +399,72 @@ export default function OfficerComplaintPage() {
 
                                     {/* ── Explain Delay ── */}
                                     <div className="pt-1 border-t border-white/5">
-                                        {showDelayForm ? (
-                                            <div className="space-y-3 bg-yellow-500/5 border border-yellow-500/20 rounded-xl p-3">
-                                                <Label className="text-xs text-yellow-400 font-semibold">Delay Explanation</Label>
-                                                <select
-                                                    value={delayReason}
-                                                    onChange={e => setDelayReason(e.target.value)}
-                                                    className="w-full text-xs bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-foreground"
-                                                >
-                                                    {DELAY_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
-                                                </select>
-                                                <Textarea
-                                                    value={delayDetails}
-                                                    onChange={e => setDelayDetails(e.target.value)}
-                                                    placeholder="Additional context (optional)…"
-                                                    rows={2}
-                                                    className="bg-white/5 border-white/10 text-sm resize-none"
-                                                />
-                                                <div className="flex gap-2">
-                                                    <Button size="sm" variant="outline"
-                                                        onClick={() => setShowDelayForm(false)}
-                                                        className="flex-1 border-white/10 text-xs">Cancel</Button>
-                                                    <Button size="sm"
-                                                        onClick={handleDelayExplanation}
-                                                        disabled={actionLoading}
-                                                        className="flex-1 bg-yellow-500 text-black hover:bg-yellow-400 font-bold text-xs">Submit</Button>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <Button
-                                                onClick={() => setShowDelayForm(true)}
-                                                variant="outline"
-                                                className="w-full border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 gap-2 text-sm"
-                                            >
-                                                <FileEdit className="w-3.5 h-3.5" /> Explain Delay
-                                            </Button>
-                                        )}
+                                        <Button
+                                            onClick={() => {
+                                                if (aiVerifiedAction === "DELAY" && message.length > 10) {
+                                                    performAction("DELAY_EXPLANATION_SUBMITTED", grievance.status, undefined, { delayReason: "AI Verified Assesment", details: message });
+                                                } else {
+                                                    handleStartInterview("DELAY");
+                                                }
+                                            }}
+                                            variant="outline"
+                                            className={`w-full gap-2 text-sm transition-all ${aiVerifiedAction === "DELAY"
+                                                ? "bg-yellow-500 text-black hover:bg-yellow-600 border-none scale-[1.02] shadow-[0_0_15px_rgba(234,179,8,0.3)]"
+                                                : "border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10"
+                                                }`}
+                                        >
+                                            <FileEdit className="w-3.5 h-3.5" />
+                                            {aiVerifiedAction === "DELAY" ? "Submit Delay Details" : "Explain Delay"}
+                                        </Button>
                                     </div>
 
                                     {/* ── Escalate ── */}
                                     <Button
                                         onClick={() => {
-                                            if (!confirm("Escalate this complaint? This will be visible to the citizen and dept admin.")) return;
-                                            performAction("ESCALATED", "escalated", "breached");
+                                            if (aiVerifiedAction === "ESCALATE" && message.length > 10) {
+                                                performAction("ESCALATED", "escalated", "breached", { message });
+                                            } else {
+                                                handleStartInterview("ESCALATE");
+                                            }
                                         }}
                                         disabled={actionLoading}
                                         variant="outline"
-                                        className="w-full border-[var(--accountability-red)]/30 text-[var(--accountability-red)] hover:bg-[var(--accountability-red-muted)] gap-2 text-sm"
+                                        className={`w-full gap-2 text-sm transition-all ${aiVerifiedAction === "ESCALATE"
+                                            ? "bg-red-500 text-white hover:bg-red-600 border-none scale-[1.02] shadow-[0_0_15px_rgba(239,68,68,0.3)] font-bold"
+                                            : "border-[var(--accountability-red)]/30 text-[var(--accountability-red)] hover:bg-[var(--accountability-red-muted)]"
+                                            }`}
                                     >
-                                        <AlertTriangle className="w-3.5 h-3.5" /> Escalate
+                                        <AlertTriangle className="w-3.5 h-3.5" />
+                                        {aiVerifiedAction === "ESCALATE" ? "Confirm Escalation" : "Escalate"}
                                     </Button>
 
                                     {/* ── Mark Resolved ── */}
                                     <Button
                                         onClick={() => {
-                                            if (!confirm("Mark this complaint as resolved and closed?")) return;
-                                            performAction("CLOSED", "closed");
+                                            if (aiVerifiedAction === "RESOLVE" && message.length > 10) {
+                                                if (aiRequiresEvidence && (!grievance.evidenceUrls || grievance.evidenceUrls.length === 0)) {
+                                                    toast.error("Evidence required! Please upload proof before resolving.");
+                                                    return;
+                                                }
+                                                performAction("COMPLAINT_CLOSED", "closed", undefined, { message });
+                                            } else {
+                                                handleStartInterview("RESOLVE");
+                                            }
                                         }}
                                         disabled={actionLoading}
-                                        className="w-full bg-[var(--civic-amber)] text-[var(--navy-deep)] hover:bg-[var(--civic-amber)]/90 font-bold gap-2"
+                                        className={`w-full font-bold gap-2 transition-all ${aiVerifiedAction === "RESOLVE"
+                                            ? "bg-green-600 text-white hover:bg-green-700 scale-[1.02] shadow-[0_0_20px_rgba(34,197,94,0.3)]"
+                                            : "bg-[var(--civic-amber)] text-[var(--navy-deep)] hover:bg-[var(--civic-amber)]/90"
+                                            }`}
                                     >
-                                        {actionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><XCircle className="w-4 h-4" /> Mark Resolved</>}
+                                        {actionLoading ? (
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                        ) : (
+                                            <>
+                                                <XCircle className="w-4 h-4" />
+                                                {aiVerifiedAction === "RESOLVE" ? "Finalize Resolution" : "Mark Resolved"}
+                                            </>
+                                        )}
                                     </Button>
                                 </div>
                             </>
@@ -445,6 +472,13 @@ export default function OfficerComplaintPage() {
                     </div>
                 </div>
             </div>
+            <ActionInterviewModal
+                open={interviewOpen}
+                onOpenChange={setInterviewOpen}
+                actionType={interviewAction}
+                grievance={grievance}
+                onComplete={onInterviewComplete}
+            />
         </div>
     );
 }

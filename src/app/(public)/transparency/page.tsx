@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { collection, onSnapshot, query, orderBy, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { LocalStorage } from "@/lib/storage";
 import {
     Loader2, Activity, Map as MapIcon, ShieldAlert,
     TrendingUp, AlertTriangle, CheckCircle2, BarChart2,
@@ -89,23 +89,45 @@ export default function TransparencyDashboard() {
     }, []);
 
     useEffect(() => {
-        if (!db) return;
-        const q = query(
-            collection(db, "grievances"),
-            where("privacyLevel", "==", "public"),
-            orderBy("createdAt", "desc")
-        );
-        const unsub = onSnapshot(q, (snap) => {
-            setComplaints(snap.docs.map(d => ({ id: d.id, ...d.data() } as Grievance)));
-            setLoading(false);
-        }, (err) => {
-            console.error("Firestore onSnapshot error:", err);
-            setLoading(false);
-        });
-        return unsub;
+        // Fetch from LocalStorage
+        const allComplaints = LocalStorage.getAllGrievances();
+        const publicComplaints = allComplaints.filter(c => c.privacyLevel === "public");
+        setComplaints(publicComplaints as unknown as Grievance[]);
+        setLoading(false);
     }, []);
 
     useEffect(() => {
+        // Build public stats from LocalStorage
+        const all = LocalStorage.getAllGrievances();
+        const resolved = all.filter(c => c.status === "closed");
+        const onTime = resolved.filter(c => c.slaStatus !== "breached");
+
+        const depts = [
+            { id: "dept_water", name: "Water Supply" },
+            { id: "dept_sanitation", name: "Sanitation" },
+            { id: "dept_roads", name: "Roads & Footpaths" },
+            { id: "dept_electricity", name: "Electricity" },
+            { id: "dept_health", name: "Health" },
+            { id: "dept_police", name: "Police" },
+        ].map(d => {
+            const stats = LocalStorage.getDeptStats(d.id);
+            return {
+                id: d.id,
+                name: d.name,
+                slaScore: stats?.slaHonestyScore ?? 100,
+                totalComplaints: stats?.totalComplaints ?? 0,
+                resolvedOnTime: stats?.resolvedOnTime ?? 0
+            };
+        });
+
+        setPublicStats({
+            totalComplaints: all.length,
+            resolvedOnTime: onTime.length,
+            slaHonestyRate: all.length > 0 ? Math.round((onTime.length / all.length) * 100) : 100,
+            departments: depts
+        });
+
+        // Still try to fetch from API if available
         fetch("/api/public/stats")
             .then(r => r.ok ? r.json() : null)
             .then(data => { if (data) setPublicStats(data); })

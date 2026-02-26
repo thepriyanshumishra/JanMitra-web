@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { LocalStorage } from "@/lib/storage";
 import {
     Plus, Filter, ChevronRight, Loader2, FileText,
 } from "lucide-react";
@@ -64,17 +64,12 @@ export default function ComplaintsListPage() {
     const [slaFilter, setSlaFilter] = useState<string[]>([]);
 
     useEffect(() => {
-        if (!db || !user) return;
-        const q = query(
-            collection(db, "grievances"),
-            where("citizenId", "==", user.id),
-            orderBy("createdAt", "desc")
-        );
-        const unsub = onSnapshot(q, (snap) => {
-            setGrievances(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Grievance)));
-            setLoading(false);
-        });
-        return () => unsub();
+        if (!user) return;
+
+        // Fetch from LocalStorage
+        const localData = LocalStorage.getGrievancesByCitizen(user.id);
+        setGrievances(localData as unknown as Grievance[]);
+        setLoading(false);
     }, [user]);
 
     const filtered = grievances.filter((g) => {

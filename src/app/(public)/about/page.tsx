@@ -1,7 +1,7 @@
 import Link from "next/link";
 import {
     Shield, ArrowRight, Eye, BarChart3, GitBranch, Users,
-    ChevronRight, Zap, Lock, Globe, Sparkles, AlertTriangle,
+    ChevronRight, Zap, Lock, Globe, AlertTriangle,
     TrendingUp, Layers, Target, Rocket, Heart, CheckCircle2,
     HelpCircle, MessageCircle, MapPin, Search, Database
 } from "lucide-react";
@@ -233,7 +233,7 @@ export default function AboutPage() {
                                 desc: "An immutable event trail that maps every hand-off within the government hierarchy."
                             },
                             {
-                                icon: Zap,
+                                icon: (props: any) => <img src="/icons/icon-192x192.png" alt="Manus AI" className={props.className} />,
                                 title: "Manus — Conversational AI",
                                 desc: "Powered by Gemini, Manus turns casual voice or text into a structured, categorized grievance."
                             },

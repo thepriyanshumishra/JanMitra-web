@@ -2,11 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import {
-    collection, query, where, onSnapshot, orderBy,
-    writeBatch, doc, serverTimestamp, addDoc, updateDoc
-} from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { LocalStorage } from "@/lib/storage";
 import {
     Loader2, AlertTriangle, Clock, CheckCircle2,
     Filter, ChevronRight, Inbox
@@ -54,25 +51,16 @@ export default function OfficerQueuePage() {
     const [tab, setTab] = useState("all");
 
     useEffect(() => {
-        if (!db) return;
-        // In MVP, officers see all submitted complaints. Phase 4+ scopes by department.
-        const q = query(
-            collection(db, "grievances"),
-            where("status", "!=", "closed"),
-            orderBy("status"),
-            orderBy("createdAt", "desc")
+        // Fetch from LocalStorage
+        const data = LocalStorage.getAllGrievances().filter(g => g.status !== "closed") as unknown as QueueItem[];
+
+        // Sort by SLA urgency
+        data.sort((a, b) =>
+            (SLA_SORT[a.slaStatus as keyof typeof SLA_SORT] ?? 3) -
+            (SLA_SORT[b.slaStatus as keyof typeof SLA_SORT] ?? 3)
         );
-        const unsub = onSnapshot(q, (snap) => {
-            const data = snap.docs.map((d) => ({ id: d.id, ...d.data() } as QueueItem));
-            // Sort by SLA urgency
-            data.sort((a, b) =>
-                (SLA_SORT[a.slaStatus as keyof typeof SLA_SORT] ?? 3) -
-                (SLA_SORT[b.slaStatus as keyof typeof SLA_SORT] ?? 3)
-            );
-            setItems(data);
-            setLoading(false);
-        });
-        return () => unsub();
+        setItems(data);
+        setLoading(false);
     }, []);
 
     const filtered = items.filter((g) => {
@@ -104,8 +92,8 @@ export default function OfficerQueuePage() {
                         key={t.key}
                         onClick={() => setTab(t.key)}
                         className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 -mb-px ${tab === t.key
-                                ? "border-[var(--civic-amber)] text-[var(--civic-amber)]"
-                                : "border-transparent text-muted-foreground hover:text-foreground"
+                            ? "border-[var(--civic-amber)] text-[var(--civic-amber)]"
+                            : "border-transparent text-muted-foreground hover:text-foreground"
                             }`}
                     >
                         {t.label}

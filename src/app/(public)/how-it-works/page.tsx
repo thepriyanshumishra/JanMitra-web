@@ -2,8 +2,12 @@ import Link from "next/link";
 import {
     CheckCircle2, ArrowRight, Zap, GitBranch, Shield,
     Search, MessageCircle, MapPin, Bell, BarChart3,
-    RotateCcw, Sparkles, Database, Send
+    RotateCcw, Database, Send
 } from "lucide-react";
+
+const ManusIcon = (props: any) => (
+    <img src="/icons/icon-192x192.png" alt="Manus AI" className={props.className} />
+);
 import { AppNavbar } from "@/components/shared/AppNavbar";
 import { Footer } from "@/components/shared/Footer";
 import { Badge } from "@/components/ui/badge";
@@ -99,7 +103,7 @@ export default function HowItWorksPage() {
                                             {i === 0 && <MessageCircle className="w-32 h-32 text-[var(--civic-amber)] opacity-20 animate-pulse" />}
                                             {i === 1 && <GitBranch className="w-32 h-32 text-blue-400 opacity-20 animate-pulse" />}
                                             {i === 2 && <Shield className="w-32 h-32 text-purple-400 opacity-20 animate-pulse" />}
-                                            {i === 3 && <Sparkles className="w-32 h-32 text-[var(--trust-green)] opacity-20 animate-pulse" />}
+                                            {i === 3 && <img src="/icons/icon-192x192.png" alt="" className="w-32 h-32 opacity-20 animate-pulse grayscale invert dark:invert-0" />}
                                         </div>
                                     </div>
                                 </div>
@@ -117,7 +121,7 @@ export default function HowItWorksPage() {
                     </div>
                     <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 text-center">
                         {[
-                            { icon: Sparkles, t: "LLM Orchestration", d: "Deep integration with Gemini for conversational understanding." },
+                            { icon: ManusIcon, t: "LLM Orchestration", d: "Deep integration with Gemini for conversational understanding." },
                             { icon: Database, t: "Immutable Logs", d: "Blockchain-inspired event sourcing for every hand-off." },
                             { icon: MapPin, t: "Geospatial Intelligence", d: "Sophisticated mapping to ensure issues reach the right ward." },
                             { icon: Bell, t: "Push Accountability", d: "Active notification system for citizens and officials alike." }

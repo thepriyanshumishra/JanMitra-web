@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { collection, query, where, orderBy, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { LocalStorage } from "@/lib/storage";
 import {
     FileText,
     Plus,
@@ -139,17 +139,15 @@ export default function CitizenDashboard() {
     const [dataLoading, setDataLoading] = useState(true);
 
     useEffect(() => {
-        if (!user?.id || !db) return;
-        const q = query(
-            collection(db, "grievances"),
-            where("citizenId", "==", user.id),
-            orderBy("createdAt", "desc")
-        );
-        const unsub = onSnapshot(q, (snap) => {
-            setComplaints(snap.docs.map(d => ({ id: d.id, ...d.data() } as Complaint)));
-            setDataLoading(false);
-        }, () => setDataLoading(false));
-        return () => unsub();
+        if (!user?.id) return;
+
+        // Fetch from LocalStorage
+        const localComplaints = LocalStorage.getGrievancesByCitizen(user.id);
+        setComplaints(localComplaints as unknown as Complaint[]);
+
+        // Also check server for updates if DB is available (background sync)
+        // For hackathon, LocalStorage is the primary source of truth
+        setDataLoading(false);
     }, [user?.id]);
 
     if (authLoading || !user) {

@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { doc, onSnapshot, updateDoc, arrayUnion, increment } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { LocalStorage } from "@/lib/storage";
 import {
     ArrowLeft, ThumbsUp, RotateCcw, Loader2,
     MapPin, Calendar, Lock, Eye, EyeOff, Share2,
@@ -82,24 +82,27 @@ export default function ComplaintDetailPage() {
     const [supporting, setSupporting] = useState(false);
 
     useEffect(() => {
-        if (!db || !params.id) return;
-        const unsub = onSnapshot(doc(db, "grievances", params.id), (snap) => {
-            if (snap.exists()) {
-                setGrievance({ id: snap.id, ...snap.data() } as GrievanceDoc);
-            }
-            setLoading(false);
-        });
-        return () => unsub();
+        if (!params.id) return;
+
+        // Fetch from LocalStorage
+        const localData = LocalStorage.getGrievance(params.id);
+        if (localData) {
+            setGrievance(localData as unknown as GrievanceDoc);
+        }
+        setLoading(false);
     }, [params.id]);
 
     async function handleSupport() {
-        if (!db || !user || !grievance) return;
+        if (!user || !grievance) return;
         setSupporting(true);
         try {
-            await updateDoc(doc(db, "grievances", grievance.id), {
-                supportCount: increment(1),
-                supporterIds: arrayUnion(user.id),
-            });
+            const updated = {
+                ...grievance,
+                supportCount: (grievance.supportCount || 0) + 1,
+                updatedAt: new Date().toISOString()
+            };
+            LocalStorage.saveGrievance(updated as any);
+            setGrievance(updated);
             toast.success("Support signal sent!");
         } catch {
             toast.error("Could not send support signal.");
@@ -113,28 +116,32 @@ export default function ComplaintDetailPage() {
     const [isReopenOpen, setIsReopenOpen] = useState(false);
 
     async function handleReopen() {
-        if (!db || !user || !grievance || !reopenReason.trim()) return;
+        if (!user || !grievance || !reopenReason.trim()) return;
         setReopening(true);
         try {
             const now = new Date().toISOString();
 
-            // 1. Write REOPENED event
-            const { addDoc, collection } = await import("firebase/firestore");
-            await addDoc(collection(db, "grievances", grievance.id, "events"), {
-                type: "REOPENED",
+            // 1. Save REOPENED event
+            LocalStorage.saveEvent({
+                id: `EVT-${Date.now()}`,
+                grievanceId: grievance.id,
+                eventType: "REOPENED",
                 actorId: user.id,
-                actorName: user.name ?? "Citizen",
-                timestamp: now,
+                actorRole: "citizen",
                 payload: { reason: reopenReason },
+                createdAt: now,
             });
 
-            // 2. Update grievance
-            await updateDoc(doc(db, "grievances", grievance.id), {
+            // 2. Update grievance in LocalStorage
+            const updated = {
+                ...grievance,
                 status: "reopened",
-                slaStatus: "at_risk", // Reset SLA to at risk to force quick action
-                reopenCount: increment(1),
+                slaStatus: "at_risk",
+                reopenCount: (grievance.reopenCount ?? 0) + 1,
                 updatedAt: now,
-            });
+            };
+            LocalStorage.saveGrievance(updated as any);
+            setGrievance(updated);
 
             toast.success("Complaint reopened successfully.");
             setIsReopenOpen(false);
@@ -152,16 +159,20 @@ export default function ComplaintDetailPage() {
     const [submittingFeedback, setSubmittingFeedback] = useState(false);
 
     async function handleFeedback() {
-        if (!db || !grievance || rating === 0) return;
+        if (!grievance || rating === 0) return;
         setSubmittingFeedback(true);
         try {
-            await updateDoc(doc(db, "grievances", grievance.id), {
+            const updated = {
+                ...grievance,
                 feedback: {
                     rating,
                     comment: feedbackComment,
                     timestamp: new Date().toISOString()
-                }
-            });
+                },
+                updatedAt: new Date().toISOString()
+            };
+            LocalStorage.saveGrievance(updated as any);
+            setGrievance(updated);
             toast.success("Feedback submitted. Thank you!");
         } catch {
             toast.error("Failed to submit feedback.");

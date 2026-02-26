@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { LocalStorage } from "@/lib/storage";
 import {
     FileText, Building2, UserCheck, CheckCircle2, RefreshCw,
     AlertTriangle, FileEdit, XCircle, RotateCcw, Loader2,
@@ -40,19 +40,19 @@ const EVENT_CONFIG: Record<string, {
         color: "text-blue-400",
         bg: "bg-blue-500/10 border-blue-500/20",
     },
-    ASSIGNED_TO_OFFICER: {
+    OFFICER_ASSIGNED: {
         label: "Officer Assigned",
         icon: <UserCheck className="w-3.5 h-3.5" />,
         color: "text-purple-400",
         bg: "bg-purple-500/10 border-purple-500/20",
     },
-    ACKNOWLEDGED: {
+    OFFICER_ACKNOWLEDGED: {
         label: "Acknowledged by Officer",
         icon: <CheckCircle2 className="w-3.5 h-3.5" />,
         color: "text-[var(--trust-green)]",
         bg: "bg-[var(--trust-green-muted)] border-[var(--trust-green)]/20",
     },
-    STATUS_UPDATED: {
+    UPDATE_PROVIDED: {
         label: "Status Updated",
         icon: <RefreshCw className="w-3.5 h-3.5" />,
         color: "text-sky-400",
@@ -64,13 +64,13 @@ const EVENT_CONFIG: Record<string, {
         color: "text-[var(--accountability-red)]",
         bg: "bg-[var(--accountability-red-muted)] border-[var(--accountability-red)]/30",
     },
-    DELAY_EXPLAINED: {
+    DELAY_EXPLANATION_SUBMITTED: {
         label: "Delay Reason Provided",
         icon: <FileEdit className="w-3.5 h-3.5" />,
         color: "text-[var(--warning-yellow)]",
         bg: "bg-yellow-500/10 border-yellow-500/20",
     },
-    CLOSED: {
+    COMPLAINT_CLOSED: {
         label: "Resolved & Closed",
         icon: <XCircle className="w-3.5 h-3.5" />,
         color: "text-[var(--trust-green)]",
@@ -97,22 +97,14 @@ export function EventTimeline({ grievanceId, visibleCount }: EventTimelineProps)
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (!db) return;
-        const q = query(
-            collection(db, "grievances", grievanceId, "events"),
-            orderBy("timestamp", "asc")
-        );
-
-        const unsub = onSnapshot(q, (snap) => {
-            const evs: GrievanceEvent[] = snap.docs.map((d) => ({
-                id: d.id,
-                ...(d.data() as Omit<GrievanceEvent, "id">),
-            }));
-            setEvents(evs);
-            setLoading(false);
-        });
-
-        return () => unsub();
+        // Fetch from LocalStorage
+        const localEvents = LocalStorage.getEvents(grievanceId);
+        setEvents(localEvents.map(e => ({
+            ...e,
+            type: e.eventType,
+            timestamp: e.createdAt
+        })) as any);
+        setLoading(false);
     }, [grievanceId]);
 
     if (loading) {
@@ -197,16 +189,13 @@ export function useGrievanceEvents(grievanceId: string) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (!db) return;
-        const q = query(
-            collection(db, "grievances", grievanceId, "events"),
-            orderBy("timestamp", "asc")
-        );
-        const unsub = onSnapshot(q, (snap) => {
-            setEvents(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<GrievanceEvent, "id">) })));
-            setLoading(false);
-        });
-        return () => unsub();
+        const localEvents = LocalStorage.getEvents(grievanceId);
+        setEvents(localEvents.map(e => ({
+            ...e,
+            type: e.eventType,
+            timestamp: e.createdAt
+        })) as any);
+        setLoading(false);
     }, [grievanceId]);
 
     return { events, loading };

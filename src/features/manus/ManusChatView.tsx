@@ -360,8 +360,9 @@ export function ManusChatView({ onFill }: ManusChatViewProps) {
                 {isInitial ? (
                     /* Initial ChatGPT State */
                     <div className="flex flex-col items-center justify-center animate-in fade-in zoom-in duration-500 py-10">
-                        <div className="w-12 h-12 rounded-2xl bg-purple-500/20 flex items-center justify-center mb-6">
-                            <Sparkles className="w-6 h-6 text-purple-400" />
+                        <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-purple-500/20 to-blue-500/10 flex items-center justify-center mb-6 shadow-2xl shadow-purple-500/10 relative group">
+                            <div className="absolute inset-0 bg-purple-500 rounded-3xl blur-xl opacity-20 group-hover:opacity-40 transition-opacity" />
+                            <img src="/icons/icon-192x192.png" alt="JanMitra" className="w-10 h-10 relative transform transition-transform group-hover:scale-110" />
                         </div>
                         <h1 className="text-2xl sm:text-3xl font-display font-bold text-center tracking-tight">
                             What&apos;s on your mind today?
@@ -379,8 +380,8 @@ export function ManusChatView({ onFill }: ManusChatViewProps) {
                                 className={`flex gap-4 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                             >
                                 {msg.role === "manus" && (
-                                    <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center shrink-0 border border-purple-500/20">
-                                        <Sparkles className="w-4 h-4 text-purple-400" />
+                                    <div className="w-8 h-8 rounded-xl bg-foreground/5 flex items-center justify-center shrink-0 border border-foreground/10 px-1.5 py-1.5 shadow-sm">
+                                        <img src="/icons/icon-192x192.png" alt="Manus" className="w-full h-full object-contain" />
                                     </div>
                                 )}
                                 <div className="flex flex-col gap-2 max-w-[85%]">
@@ -418,8 +419,8 @@ export function ManusChatView({ onFill }: ManusChatViewProps) {
 
                         {loading && (
                             <div className="flex gap-4">
-                                <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center shrink-0 border border-purple-500/20">
-                                    <Sparkles className="w-4 h-4 text-purple-400 animate-pulse" />
+                                <div className="w-8 h-8 rounded-xl bg-foreground/5 flex items-center justify-center shrink-0 border border-foreground/10 animate-pulse px-1.5 py-1.5">
+                                    <img src="/icons/icon-192x192.png" alt="Thinking" className="w-full h-full object-contain opacity-40" />
                                 </div>
                                 <div className="flex items-center gap-2 text-muted-foreground italic text-xs uppercase tracking-widest opacity-70">
                                     <Loader2 className="w-3 h-3 animate-spin" />
@@ -459,7 +460,7 @@ export function ManusChatView({ onFill }: ManusChatViewProps) {
                                     <Badge className="bg-purple-500/10 text-purple-400 border-purple-500/20 text-[10px] font-bold uppercase tracking-wider">
                                         Summary
                                     </Badge>
-                                    <Sparkles className="w-4 h-4 text-purple-400/50" />
+                                    <img src="/icons/icon-192x192.png" alt="" className="w-4 h-4 opacity-30" />
                                 </div>
 
                                 <div className="grid grid-cols-1 gap-4">

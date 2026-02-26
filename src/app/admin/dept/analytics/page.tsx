@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { collection, query, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { LocalStorage } from "@/lib/storage";
 import { Loader2, TrendingUp, TrendingDown, AlertTriangle, Clock, CheckCircle2 } from "lucide-react";
 import {
     BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -51,11 +51,10 @@ export default function DeptAdminAnalyticsPage() {
     const [lastRefreshed, setLastRefreshed] = useState<string>("");
 
     const fetchData = useCallback(async () => {
-        if (!db) return;
         setLoading(true);
         try {
-            const snap = await getDocs(query(collection(db, "grievances")));
-            setGrievances(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Grievance)));
+            const data = LocalStorage.getAllGrievances();
+            setGrievances(data as unknown as Grievance[]);
             setLastRefreshed(new Date().toLocaleTimeString());
         } finally {
             setLoading(false);

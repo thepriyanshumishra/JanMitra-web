@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Bot, X, Send, Loader2, Sparkles, ChevronRight } from "lucide-react";
+import { X, Send, Loader2, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -97,10 +97,11 @@ export function ManusDrawer({ onFill, openRef }: ManusDrawerProps) {
             {/* FAB trigger */}
             <Button
                 onClick={() => setOpen(true)}
-                className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-[var(--civic-amber)] text-[var(--navy-deep)] hover:bg-[var(--civic-amber)]/90 shadow-2xl glow-amber p-0"
+                className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-2xl bg-[var(--civic-amber)] text-[var(--navy-deep)] hover:bg-[var(--civic-amber)]/90 shadow-2xl glow-amber p-2 active:scale-95 transition-all group overflow-hidden border-2 border-[var(--navy-deep)]/10"
                 aria-label="Open Manus AI assistant"
             >
-                <Bot className="w-6 h-6" />
+                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+                <img src="/icons/icon-192x192.png" alt="Manus" className="w-9 h-9 relative z-10" />
             </Button>
 
             {/* Drawer overlay */}
@@ -114,8 +115,8 @@ export function ManusDrawer({ onFill, openRef }: ManusDrawerProps) {
                         {/* Header */}
                         <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
                             <div className="flex items-center gap-2.5">
-                                <div className="w-8 h-8 rounded-lg bg-[var(--civic-amber)] flex items-center justify-center">
-                                    <Sparkles className="w-4 h-4 text-[var(--navy-deep)]" />
+                                <div className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center border border-foreground/10 px-1.5 py-1.5">
+                                    <img src="/icons/icon-192x192.png" alt="Manus" className="w-full h-full object-contain" />
                                 </div>
                                 <div>
                                     <p className="text-sm font-display font-bold">Manus</p>

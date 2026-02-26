@@ -6,7 +6,8 @@ import { useEffect, useState } from "react";
 import {
     Bell, LogOut, User, ChevronDown, CheckCircle2,
     Menu, X, LayoutDashboard, FileText, Globe,
-    Settings, ShieldCheck, Heart, Info, Activity, Zap
+    Settings, ShieldCheck, Heart, Info, Activity, Zap,
+    Briefcase, Shield
 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
@@ -41,7 +42,7 @@ const ROLE_COLOR: Record<UserRole, string> = {
 };
 
 export function AppNavbar() {
-    const { user, signOut, refreshUser } = useAuth();
+    const { user, signOut, updateRole } = useAuth();
     const pathname = usePathname();
     const router = useRouter();
     const [scrolled, setScrolled] = useState(false);
@@ -56,6 +57,11 @@ export function AppNavbar() {
     const handleSignOut = async () => {
         await signOut();
         router.push("/");
+    };
+
+    const handleRoleSwitch = async (newRole: UserRole) => {
+        await updateRole(newRole);
+        router.push(ROLE_HOME[newRole]);
     };
 
     const isActive = (href: string) => {
@@ -227,6 +233,42 @@ export function AppNavbar() {
 
                                     <DropdownMenuSeparator className="bg-foreground/10 my-1.5" />
 
+                                    {/* Role Switcher */}
+                                    <DropdownMenuLabel className="px-2 text-[10px] font-black uppercase text-muted-foreground tracking-widest py-1">Switch Perspective</DropdownMenuLabel>
+                                    <div className="grid grid-cols-1 gap-1 px-1">
+                                        {(Object.keys(ROLE_LABEL) as UserRole[]).map((r) => (
+                                            <DropdownMenuItem
+                                                key={r}
+                                                onClick={() => handleRoleSwitch(r)}
+                                                className={cn(
+                                                    "rounded-xl focus:bg-foreground/10 cursor-pointer transition-colors py-2 gap-3",
+                                                    user.role === r ? "bg-foreground/5 text-[var(--civic-amber)]" : "text-muted-foreground"
+                                                )}
+                                            >
+                                                <div className={cn(
+                                                    "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
+                                                    user.role === r ? "bg-[var(--civic-amber)]/10" : "bg-foreground/5"
+                                                )}>
+                                                    {r === 'citizen' && <User className="w-4 h-4" />}
+                                                    {r === 'officer' && <Shield className="w-4 h-4" />}
+                                                    {r === 'dept_admin' && <Briefcase className="w-4 h-4" />}
+                                                    {r === 'system_admin' && <Settings className="w-4 h-4" />}
+                                                </div>
+                                                <div className="flex flex-col min-w-0">
+                                                    <span className="font-bold text-sm leading-none">{ROLE_LABEL[r]}</span>
+                                                    <span className="text-[9px] opacity-70 mt-1 truncate">
+                                                        {r === 'citizen' && "Public Dashboard"}
+                                                        {r === 'officer' && "Grievance Desk"}
+                                                        {r === 'dept_admin' && "Department Analytics"}
+                                                        {r === 'system_admin' && "Network Control"}
+                                                    </span>
+                                                </div>
+                                            </DropdownMenuItem>
+                                        ))}
+                                    </div>
+
+                                    <DropdownMenuSeparator className="bg-foreground/10 my-1.5" />
+
                                     <DropdownMenuItem
                                         onClick={handleSignOut}
                                         className="rounded-xl focus:bg-red-500/10 text-red-400 hover:text-red-400 cursor-pointer transition-colors py-2.5 font-bold"
@@ -303,6 +345,40 @@ export function AppNavbar() {
                         ))}
 
                         <div className="h-[1px] bg-foreground/5 my-2" />
+
+                        {user && (
+                            <div className="flex flex-col gap-3">
+                                <div className="text-[10px] font-black uppercase text-muted-foreground tracking-widest pl-2">Switch Perspective</div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {(Object.keys(ROLE_LABEL) as UserRole[]).map((r) => (
+                                        <button
+                                            key={r}
+                                            onClick={() => {
+                                                handleRoleSwitch(r);
+                                                setMobileMenuOpen(false);
+                                            }}
+                                            className={cn(
+                                                "flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all",
+                                                user.role === r
+                                                    ? "bg-[var(--civic-amber)]/10 border-[var(--civic-amber)]/20 text-foreground"
+                                                    : "bg-foreground/5 border-foreground/5 text-muted-foreground"
+                                            )}
+                                        >
+                                            <div className={cn(
+                                                "w-10 h-10 rounded-xl flex items-center justify-center",
+                                                user.role === r ? "bg-[var(--civic-amber)] text-[var(--navy-deep)]" : "bg-foreground/10"
+                                            )}>
+                                                {r === 'citizen' && <User className="w-5 h-5" />}
+                                                {r === 'officer' && <Shield className="w-5 h-5" />}
+                                                {r === 'dept_admin' && <Briefcase className="w-5 h-5" />}
+                                                {r === 'system_admin' && <Settings className="w-5 h-5" />}
+                                            </div>
+                                            <span className="text-[10px] font-black uppercase tracking-tight">{ROLE_LABEL[r]}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {!user && (
                             <Link href="/login" onClick={() => setMobileMenuOpen(false)}>

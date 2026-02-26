@@ -17,6 +17,7 @@ import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import type { User, UserRole } from "@/types";
 import { toast } from "sonner";
+import { LocalStorage } from "@/lib/storage";
 
 interface AuthContextValue {
     user: User | null;
@@ -24,6 +25,7 @@ interface AuthContextValue {
     loading: boolean;
     signOut: () => Promise<void>;
     refreshUser: () => Promise<void>;
+    updateRole: (newRole: UserRole) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue>({
@@ -32,6 +34,7 @@ const AuthContext = createContext<AuthContextValue>({
     loading: true,
     signOut: async () => { },
     refreshUser: async () => { },
+    updateRole: async () => { },
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -40,14 +43,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [loading, setLoading] = useState(true);
 
     const fetchUserProfile = useCallback(async (fbUser: FirebaseUser): Promise<User | null> => {
-        if (!db) return null;
+        // First check LocalStorage
+        const localProfile = LocalStorage.getUser(fbUser.uid);
+        if (localProfile) {
+            LocalStorage.setSessionUser(localProfile);
+            return localProfile;
+        }
+
         try {
-            const ref = doc(db, "users", fbUser.uid);
-            const snap = await getDoc(ref);
-            if (snap.exists()) {
-                return snap.data() as User;
+            // Fallback to Firestore if available, but for now prioritize LocalStorage
+            if (db) {
+                const ref = doc(db, "users", fbUser.uid);
+                const snap = await getDoc(ref);
+                if (snap.exists()) {
+                    const profile = snap.data() as User;
+                    LocalStorage.saveUser(profile);
+                    LocalStorage.setSessionUser(profile);
+                    return profile;
+                }
             }
-            // New user — create default profile
+
+            // New user — create default profile in LocalStorage
             const newUser: User = {
                 id: fbUser.uid,
                 firebaseUid: fbUser.uid,
@@ -57,17 +73,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 ...(fbUser.phoneNumber ? { phone: fbUser.phoneNumber } : {}),
                 createdAt: new Date().toISOString(),
             };
-            // Strip any undefined fields before writing (Firestore rejects them)
-            const firestoreData = Object.fromEntries(
-                Object.entries({ ...newUser, createdAt: serverTimestamp() })
-                    .filter(([, v]) => v !== undefined)
-            );
-            await setDoc(ref, firestoreData);
+
+            LocalStorage.saveUser(newUser);
+            LocalStorage.setSessionUser(newUser);
+
+            // Also try to mirror in Firestore if db is ready
+            if (db) {
+                const ref = doc(db, "users", fbUser.uid);
+                const firestoreData = Object.fromEntries(
+                    Object.entries({ ...newUser, createdAt: serverTimestamp() })
+                        .filter(([, v]) => v !== undefined)
+                );
+                await setDoc(ref, firestoreData).catch(() => { });
+            }
+
             return newUser;
         } catch (err) {
             console.error("Error fetching user profile:", err);
-            toast.error("Account Error: Could not load your profile. Please check Firestore permissions.");
-            return null;
+            // Even on error, return a local profile if we can't hit Firestore
+            const fallbackUser: User = {
+                id: fbUser.uid,
+                firebaseUid: fbUser.uid,
+                role: "citizen" as UserRole,
+                name: fbUser.displayName ?? fbUser.email?.split("@")[0] ?? "Citizen",
+                createdAt: new Date().toISOString(),
+            };
+            return fallbackUser;
         }
     }, []);
 
@@ -111,10 +142,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await firebaseSignOut(auth);
         setUser(null);
         setFirebaseUser(null);
+        LocalStorage.setSessionUser(null);
     }, []);
 
+    const updateRole = useCallback(async (newRole: UserRole) => {
+        if (!user) return;
+        try {
+            LocalStorage.updateUserRole(user.id, newRole);
+            const updatedUser = { ...user, role: newRole };
+            setUser(updatedUser);
+            LocalStorage.setSessionUser(updatedUser);
+
+            // Mirror in Firestore if possible
+            if (db) {
+                const ref = doc(db, "users", user.id);
+                await setDoc(ref, { role: newRole }, { merge: true }).catch(() => { });
+            }
+
+            toast.success(`Role switched to ${newRole}`);
+        } catch (err) {
+            console.error("Error updating role:", err);
+            toast.error("Failed to update role");
+        }
+    }, [user]);
+
     return (
-        <AuthContext.Provider value={{ user, firebaseUser, loading, signOut, refreshUser }}>
+        <AuthContext.Provider value={{ user, firebaseUser, loading, signOut, refreshUser, updateRole }}>
             {children}
         </AuthContext.Provider>
     );

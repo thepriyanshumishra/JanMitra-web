@@ -23,6 +23,8 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { useRequireAuth } from "@/hooks/useAuth";
 import { ManusChatView } from "@/features/manus/ManusChatView";
 import { LocationModal } from "@/features/manus/LocationModal";
+import { LocalStorage } from "@/lib/storage";
+import type { Grievance, GrievanceEvent } from "@/types";
 
 // ─── Category data ────────────────────────────────────────────────
 const CATEGORIES = [
@@ -39,6 +41,21 @@ const CATEGORIES = [
     { id: "Police & Safety", icon: Shield, color: "text-[var(--accountability-red)]", bg: "bg-[var(--accountability-red-muted)]", border: "border-[var(--accountability-red)]/30" },
     { id: "Other", icon: HelpCircle, color: "text-muted-foreground", bg: "bg-white/5", border: "border-white/10" },
 ];
+
+const CATEGORY_TO_DEPT: Record<string, string> = {
+    "Water Supply": "dept_water",
+    "Sanitation & Garbage": "dept_sanitation",
+    "Roads & Footpaths": "dept_roads",
+    "Electricity": "dept_electricity",
+    "Public Transport": "dept_transport",
+    "Health & Hospital": "dept_health",
+    "Education": "dept_education",
+    "Parks & Recreation": "dept_green",
+    "Pollution": "dept_environment",
+    "Land & Property": "dept_housing",
+    "Police & Safety": "dept_police",
+    "Other": "dept_general",
+};
 
 const PRIVACY_OPTIONS = [
     {
@@ -166,7 +183,7 @@ export default function SubmitComplaintPage() {
 
     // Final submission
     async function handleSubmit() {
-        if (!db || !user) return;
+        if (!user) return;
         setSubmitting(true);
         try {
             const grievanceId = `JM-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
@@ -175,36 +192,57 @@ export default function SubmitComplaintPage() {
 
             let evidenceUrls: string[] = [];
             if (form.files.length > 0) {
-                toast.loading("Uploading evidence files...");
-                evidenceUrls = await uploadMultipleFiles(grievanceId, form.files);
-                toast.dismiss();
+                // For now, in local storage mode, we can't really "upload" and get URLs easily without a backend
+                // but we can mock it or just use the local file names/fake paths
+                evidenceUrls = form.files.map(f => `/mock-storage/${grievanceId}/${f.name}`);
             }
 
-            const grievanceData = {
+            const grievanceData: Grievance = {
+                id: grievanceId,
                 citizenId: user.id,
                 category: form.category,
                 title: form.title.trim(),
                 description: form.description.trim(),
-                location: { address: form.location.trim() },
+                location: { addressText: form.location.trim() },
                 privacyLevel: form.privacyLevel,
-                isDelegated: form.isDelegated,
-                ...(form.isDelegated ? { delegatedFor: { name: form.delegateName, relationship: form.delegateRelation } } : {}),
-                evidenceUrls,
+                status: "submitted",
+                slaStatus: "on_track",
+                slaDeadlineAt,
+                supportCount: 0,
+                reopenCount: 0,
+                createdAt: now,
+                updatedAt: now,
+                departmentId: CATEGORY_TO_DEPT[form.category] || "dept_general",
             };
 
-            const response = await fetch("/api/grievances", {
+            const eventData: GrievanceEvent = {
+                id: `${grievanceId}_SUBMITTED`,
+                grievanceId,
+                eventType: "GRIEVANCE_SUBMITTED",
+                actorId: user.id,
+                actorRole: "citizen",
+                payload: { category: form.category },
+                createdAt: now,
+            };
+
+            // Save to LocalStorage
+            LocalStorage.saveGrievance(grievanceData);
+            LocalStorage.saveEvent(eventData);
+
+            // Optional: Still try the API for server-side persistence if configured
+            fetch("/api/grievances", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(grievanceData),
+                body: JSON.stringify({
+                    ...grievanceData,
+                    citizenId: user.id,
+                    evidenceUrls
+                }),
+            }).catch(() => {
+                // Ignore errors since we have local storage as source of truth
             });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || "Submission failed");
-            }
-
-            const result = await response.json();
-            toast.success(`Complaint ${result.id} submitted!`);
+            toast.success(`Complaint ${grievanceId} submitted locally!`);
             router.push("/dashboard");
         } catch (err) {
             console.error(err);
@@ -290,11 +328,11 @@ export default function SubmitComplaintPage() {
                                 : "border-foreground/10 bg-foreground/3 hover:border-purple-500/40 hover:bg-purple-500/5"
                                 }`}
                         >
-                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${fillMode === "manus"
-                                ? "bg-purple-500 text-white"
-                                : "bg-foreground/10 text-muted-foreground group-hover:text-purple-400"
+                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all shadow-lg ${fillMode === "manus"
+                                ? "bg-purple-500 shadow-purple-500/25 p-2"
+                                : "bg-foreground/10 p-3 grayscale opacity-70 group-hover:grayscale-0 group-hover:bg-purple-500/10"
                                 }`}>
-                                <Sparkles className="w-7 h-7" />
+                                <img src="/icons/icon-192x192.png" alt="Manus AI" className={`w-full h-full object-contain ${fillMode === "manus" ? "invert dark:invert-0" : ""}`} />
                             </div>
                             <div>
                                 <p className="font-bold text-base">Use Manus AI</p>
@@ -307,8 +345,10 @@ export default function SubmitComplaintPage() {
                     </div>
 
                     {fillMode === "manus" && (
-                        <div className="glass rounded-xl p-4 flex items-start gap-3 border border-purple-500/20">
-                            <Sparkles className="w-4 h-4 text-purple-400 mt-0.5 shrink-0" />
+                        <div className="glass rounded-xl p-4 flex items-center gap-3 border border-purple-500/20">
+                            <div className="w-6 h-6 rounded-lg bg-purple-500/10 flex items-center justify-center p-1">
+                                <img src="/icons/icon-192x192.png" alt="" className="w-full h-full object-contain opacity-70" />
+                            </div>
                             <p className="text-sm text-muted-foreground">
                                 You&apos;ve selected <span className="text-purple-400 font-semibold">Manus AI</span>.
                                 Click <strong>Next</strong> to start the conversation.
