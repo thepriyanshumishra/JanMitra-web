@@ -17,6 +17,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "ethers": "^6.13.5",
     "firebase": "^12.9.0",
     "firebase-admin": "^13.6.1",
     "leaflet": "^1.9.4",

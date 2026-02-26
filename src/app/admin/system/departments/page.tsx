@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Fragment } from "react";
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Building2, Plus, Loader2, Edit2, Trash2, ShieldAlert, Check, X } from "lucide-react";
@@ -243,7 +243,7 @@ export default function SystemAdminDepartmentsPage() {
                                 </thead>
                                 <tbody className="divide-y divide-white/5">
                                     {departments.map(dept => (
-                                        <>
+                                        <Fragment key={dept.id}>
                                             <tr key={dept.id} className="hover:bg-white/[0.02] transition-colors">
                                                 <td className="px-6 py-4">
                                                     <p className="font-semibold">{dept.name}</p>
@@ -358,7 +358,7 @@ export default function SystemAdminDepartmentsPage() {
                                                     </td>
                                                 </tr>
                                             )}
-                                        </>
+                                        </Fragment>
                                     ))}
                                 </tbody>
                             </table>

@@ -5,6 +5,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { adminDb, adminReady } from "@/lib/firebase-admin";
 import { validateSession } from "@/lib/auth-middleware";
+import { BlockchainService } from "@/lib/blockchain-service";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -103,6 +104,25 @@ export async function POST(req: NextRequest, { params }: Params) {
 
         // Events are APPEND-ONLY — use create() not set()
         await adminDb.collection("grievanceEvents").doc(eventId).create(event);
+
+        // 🔗 Blockchain Anchoring (Silent / Free Strategy)
+        // We do this after Firestore confirmation. 
+        // We don't block the API response for the transaction to complete, but we trigger it.
+        const contractAddress = process.env.NEXT_PUBLIC_BLOCKCHAIN_CONTRACT_ADDRESS;
+        const privateKey = process.env.BLOCKCHAIN_PRIVATE_KEY;
+
+        if (contractAddress && privateKey) {
+            BlockchainService.anchorEvent(grievanceId, eventType, event).then(result => {
+                if (result) {
+                    // Update the event with the blockchain proof
+                    adminDb.collection("grievanceEvents").doc(eventId).update({
+                        blockchainHash: result.hash,
+                        blockchainTxHash: result.txHash,
+                        anchoredAt: result.timestamp
+                    }).catch(e => console.error("Failed to update event with proof:", e));
+                }
+            }).catch(e => console.error("Blockchain anchoring error:", e));
+        }
 
         return NextResponse.json({ success: true, event });
     } catch (err) {

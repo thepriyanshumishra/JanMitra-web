@@ -1,20 +1,28 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ethers } from "ethers";
 import { db } from "@/lib/firebase";
+import { collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
 import { LocalStorage } from "@/lib/storage";
 import {
     FileText, Building2, UserCheck, CheckCircle2, RefreshCw,
     AlertTriangle, FileEdit, XCircle, RotateCcw, Loader2,
+    Shield, Link as LinkIcon
 } from "lucide-react";
 
 export interface GrievanceEvent {
     id: string;
+    grievanceId: string;
     type: string;
     actorId: string;
     actorName?: string;
+    actorRole?: string;
     timestamp: string;
-    payload?: Record<string, string>;
+    payload?: Record<string, any>;
+    blockchainHash?: string;
+    blockchainTxHash?: string;
+    anchoredAt?: number;
 }
 
 interface EventTimelineProps {
@@ -92,19 +100,80 @@ function formatTime(iso: string) {
     });
 }
 
+function verifyEventHash(event: GrievanceEvent): boolean {
+    if (!event.blockchainHash) return true; // Not anchored yet
+
+    try {
+        // We must hash exactly what was anchored in the API route
+        const anchorData = {
+            id: event.id,
+            grievanceId: event.grievanceId,
+            eventType: event.type,
+            actorId: event.actorId,
+            actorRole: event.actorRole || "citizen",
+            payload: event.payload || {},
+            createdAt: event.timestamp
+        };
+
+        const jsonString = JSON.stringify(anchorData, Object.keys(anchorData).sort());
+        const computedHash = ethers.keccak256(ethers.toUtf8Bytes(jsonString));
+
+        return computedHash === event.blockchainHash;
+    } catch (e) {
+        console.error("Hash verification failed:", e);
+        return false;
+    }
+}
+
 export function EventTimeline({ grievanceId, visibleCount }: EventTimelineProps) {
     const [events, setEvents] = useState<GrievanceEvent[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Fetch from LocalStorage
+        // 1. Initial load from LocalStorage for speed (Optimistic)
         const localEvents = LocalStorage.getEvents(grievanceId);
-        setEvents(localEvents.map(e => ({
-            ...e,
-            type: e.eventType,
-            timestamp: e.createdAt
-        })) as any);
-        setLoading(false);
+        if (localEvents.length > 0) {
+            setEvents(localEvents.map(e => ({
+                ...e,
+                type: e.eventType,
+                timestamp: e.createdAt,
+                grievanceId: e.grievanceId
+            })) as any);
+            setLoading(false);
+        }
+
+        // 2. Real-time sync from Firestore
+        if (!db) {
+            setLoading(false);
+            return;
+        }
+
+        const q = query(
+            collection(db, "grievanceEvents"),
+            where("grievanceId", "==", grievanceId),
+            orderBy("createdAt", "asc")
+        );
+
+        const unsubscribe = onSnapshot(q, (snap) => {
+            const fsEvents = snap.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    ...data,
+                    type: data.eventType,
+                    timestamp: data.createdAt
+                };
+            }) as GrievanceEvent[];
+
+            if (fsEvents.length > 0) {
+                setEvents(fsEvents);
+            }
+            setLoading(false);
+        }, (err) => {
+            console.error("Timeline Sync Error:", err);
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
     }, [grievanceId]);
 
     if (loading) {
@@ -132,6 +201,7 @@ export function EventTimeline({ grievanceId, visibleCount }: EventTimelineProps)
                     };
 
                     const isLast = i === visible.length - 1;
+                    const isVerified = verifyEventHash(event);
 
                     return (
                         <div key={event.id} className="flex gap-4 relative pb-6">
@@ -143,7 +213,7 @@ export function EventTimeline({ grievanceId, visibleCount }: EventTimelineProps)
                             </div>
 
                             {/* Content */}
-                            <div className={`pt-1.5 flex-1 min-w-0 ${isLast ? "" : ""}`}>
+                            <div className="pt-1.5 flex-1 min-w-0">
                                 <div className="flex items-start justify-between gap-3">
                                     <div className="min-w-0">
                                         <p className={`text-sm font-semibold ${cfg.color}`}>{cfg.label}</p>
@@ -166,6 +236,39 @@ export function EventTimeline({ grievanceId, visibleCount }: EventTimelineProps)
                                     <p className="text-[10px] text-muted-foreground mt-1">
                                         by {event.actorName}
                                     </p>
+                                )}
+
+                                {/* ⛓️ Blockchain Proof */}
+                                {event.blockchainTxHash && (
+                                    <div className="mt-2 flex flex-col gap-1.5">
+                                        <div className="flex items-center gap-2">
+                                            {isVerified ? (
+                                                <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[var(--trust-green-muted)] text-[var(--trust-green)] text-[9px] font-bold border border-[var(--trust-green)]/20">
+                                                    <Shield className="w-2.5 h-2.5" />
+                                                    IMMUTABLE PROOF
+                                                </div>
+                                            ) : (
+                                                <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[var(--accountability-red-muted)] text-[var(--accountability-red)] text-[9px] font-bold border border-[var(--accountability-red)]/20 animate-pulse">
+                                                    <AlertTriangle className="w-2.5 h-2.5" />
+                                                    DATA TAMPERED
+                                                </div>
+                                            )}
+                                            <a
+                                                href={`https://amoy.polygonscan.com/tx/${event.blockchainTxHash}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-1 text-[9px] text-muted-foreground hover:text-[var(--civic-amber)] transition-colors"
+                                            >
+                                                <LinkIcon className="w-2.5 h-2.5" />
+                                                Verify on Chain
+                                            </a>
+                                        </div>
+                                        {!isVerified && (
+                                            <p className="text-[10px] text-[var(--accountability-red)] font-semibold">
+                                                Warning: Database record modified after anchoring.
+                                            </p>
+                                        )}
+                                    </div>
                                 )}
                             </div>
                         </div>
@@ -193,7 +296,8 @@ export function useGrievanceEvents(grievanceId: string) {
         setEvents(localEvents.map(e => ({
             ...e,
             type: e.eventType,
-            timestamp: e.createdAt
+            timestamp: e.createdAt,
+            grievanceId: e.grievanceId
         })) as any);
         setLoading(false);
     }, [grievanceId]);
