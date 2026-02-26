@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import {
     Bell, LogOut, User, ChevronDown, CheckCircle2,
     Menu, X, LayoutDashboard, FileText, Globe,
-    Settings, ShieldCheck, Heart, Info, Activity
+    Settings, ShieldCheck, Heart, Info, Activity, Zap
 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
