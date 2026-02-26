@@ -1,3 +1,13 @@
+/**
+ * JanMitra — Accountability Infrastructure for Indian Governance
+ * Copyright (C) 2026 Priyanshu Mishra
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
+
 import Link from "next/link";
 import { Shield, ArrowRight, Eye, BarChart3, GitBranch, Users, ChevronRight, Zap, Lock, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,6 +19,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "JanMitra — Governance Accountability Platform",
   description: "Track the flow of responsibility inside institutions. Making institutional failure visible and measurable for citizens and administrators.",
+  authors: [{ name: "Priyanshu Mishra" }],
 };
 
 // ─── Real stats from API (with fallback) ─────────────────────────

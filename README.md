@@ -10,7 +10,7 @@ A civic-tech grievance resolution platform with end-to-end transparent SLA track
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)](https://typescriptlang.org)
 [![Firebase](https://img.shields.io/badge/Firebase-Firestore%20%7C%20Auth%20%7C%20Storage-orange?logo=firebase)](https://firebase.google.com)
 [![PWA](https://img.shields.io/badge/PWA-Installable-green?logo=pwa)](https://web.dev/progressive-web-apps/)
-[![License](https://img.shields.io/badge/license-MIT-brightgreen)](LICENSE)
+[![License](https://img.shields.io/badge/license-AGPL--3.0-blue?logo=gnu)](LICENSE)
 
 </div>
 
@@ -184,7 +184,16 @@ Pull requests are welcome. For major changes, please open an issue first to disc
 
 ## 📄 License
 
-[MIT](LICENSE)
+This project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**.
+
+### ⚖️ Why AGPL-3.0?
+JanMitra is built on the principle of **accountability**. We believe that software meant to improve governance should itself be governed by rules that prevent "enclosed" or proprietary forks that hide their source code.
+
+- **Copyleft**: If you modify this software and run it on a server for others to use, you **must** make your modified source code available to those users.
+- **Attribution**: You must keep all original copyright notices and credits to the authors.
+- **Freedom**: This ensures that JanMitra and all its future versions remain free and open for the public good.
+
+For more details, see the [LICENSE](LICENSE) file.
 
 ---
 

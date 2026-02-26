@@ -1,3 +1,12 @@
+/**
+ * JanMitra — Accountability Infrastructure for Indian Governance
+ * Copyright (C) 2026 Priyanshu Mishra
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ */
 "use client";
 
 import Link from "next/link";
@@ -119,7 +128,7 @@ export function Footer() {
                 <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-6">
                     <div className="flex flex-col items-center md:items-start gap-1">
                         <p className="text-xs text-muted-foreground">
-                            © {currentYear} JanMitra Accountability Infrastructure. All rights reserved.
+                            © {currentYear} Priyanshu Mishra. Licensed under <Link href="/LICENSE" className="underline hover:text-foreground">GNU AGPL v3</Link>.
                         </p>
                         <p className="text-[10px] text-muted-foreground/60 flex items-center gap-1">
                             Handcrafted with <Heart className="w-2.5 h-2.5 text-red-500 fill-red-500" /> for a better democracy.
